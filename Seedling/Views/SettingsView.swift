@@ -15,6 +15,10 @@ struct SettingsView: View {
         settings.templatesFolderURL != nil
     }
 
+    private var mainPath: String {
+        settings.mainPathURL?.path ?? "Not set"
+    }
+
     var body: some View {
         let theme = KikaTheme.resolve(scheme: colorScheme)
 
@@ -25,6 +29,25 @@ struct SettingsView: View {
                 templatesHero(theme: theme)
             } header: {
                 Text("Templates folder")
+                    .accessibilityAddTraits(.isHeader)
+            }
+
+            Section {
+                KikaRow(icon: "folder", label: "Location") {
+                    Text(mainPath)
+                        .font(KikaFont.caption)
+                        .foregroundStyle(theme.textTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+                Button("Change…") {
+                    pickMainPath()
+                }
+                .buttonStyle(KikaSecondaryButtonStyle())
+                .accessibilityLabel("Change main path")
+            } header: {
+                Text("Main path")
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -188,6 +211,18 @@ struct SettingsView: View {
         panel.prompt = "Choose"
         if panel.runModal() == .OK, let url = panel.url {
             settings.setTemplatesFolder(from: url)
+        }
+    }
+
+    private func pickMainPath() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.setMainPath(url)
         }
     }
 }

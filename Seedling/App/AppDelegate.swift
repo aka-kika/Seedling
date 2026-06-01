@@ -264,11 +264,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     @objc private func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        // The standard Settings scene is opened with ⌘,; the same call works programmatically.
-        if #available(macOS 14, *) {
+        DispatchQueue.main.async {
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            if let win = NSApp.windows.first(where: {
+                $0.identifier?.rawValue.contains("Settings") == true
+                    || $0.title.contains("Settings")
+                    || $0.title == "Seedling"
+            }) {
+                win.makeKeyAndOrderFront(nil)
+                win.center()
+            }
         }
     }
 
