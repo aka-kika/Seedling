@@ -203,27 +203,28 @@ struct SettingsView: View {
     }
 
     private func pickTemplatesFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        if panel.runModal() == .OK, let url = panel.url {
+        if let url = chooseDirectory() {
             settings.setTemplatesFolder(from: url)
         }
     }
 
     private func pickMainPath() {
+        if let url = chooseDirectory() {
+            settings.setMainPath(url)
+        }
+    }
+
+    /// Folder chooser, app activated first so the panel comes to the front.
+    private func chooseDirectory() -> URL? {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.setMainPath(url)
-        }
+        panel.level = .modalPanel
+        return panel.runModal() == .OK ? panel.url : nil
     }
 }
 

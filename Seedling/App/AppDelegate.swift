@@ -38,6 +38,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             name: .seedlingDidSeed,
             object: nil
         )
+        // Return to menu-bar-only (no Dock icon) once Settings/About closes.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWindowClose(_:)),
+            name: NSWindow.willCloseNotification,
+            object: nil
+        )
         // React to templates folder changes by swapping the status item icon.
         settings.$templatesFolderURL
             .receive(on: RunLoop.main)
@@ -263,16 +270,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func openSettings() {
+        // An accessory (menu-bar-only) app can't reliably surface the SwiftUI
+        // Settings scene: with `.accessory` policy there's no active app context
+        // for `showSettingsWindow:` to open into. Briefly become a regular app so
+        // the window can open and come to the front; we drop back to `.accessory`
+        // when it closes (see `handleWindowClose`).
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            if let win = NSApp.windows.first(where: {
-                $0.identifier?.rawValue.contains("Settings") == true
-                    || $0.title.contains("Settings")
-                    || $0.title == "Seedling"
-            }) {
+            // Front whatever titled window just appeared (Settings / About).
+            if let win = NSApp.windows.first(where: { $0.styleMask.contains(.titled) && $0.canBecomeKey }) {
                 win.makeKeyAndOrderFront(nil)
                 win.center()
+            }
+        }
+    }
+
+    /// When the last titled window (Settings/About) closes, return to being a
+    /// pure menu-bar app (no Dock icon).
+    @objc private func handleWindowClose(_ note: Notification) {
+        DispatchQueue.main.async { [weak self] in
+            guard self != nil else { return }
+            let titledVisible = NSApp.windows.contains {
+                $0.styleMask.contains(.titled) && $0.isVisible
+            }
+            if !titledVisible {
+                NSApp.setActivationPolicy(.accessory)
             }
         }
     }

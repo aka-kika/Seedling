@@ -107,7 +107,10 @@ struct MenuBarContent: View {
                     }
                 }
             }
-            .frame(maxHeight: 300)
+            // Tall enough that the default flow (project + source + result) shows
+            // in one window without scrolling; only an unusually large template
+            // set would ever scroll.
+            .frame(maxHeight: 480)
 
             KikaDivider()
 
@@ -240,7 +243,8 @@ struct MenuBarContent: View {
             KikaSectionHeader(title: "Result")
             if !result.created.isEmpty {
                 // The growth beat — replays each seed via the seedTick id.
-                SeedGrowthView(mode: .growth)
+                // Compact so the result fits without scrolling.
+                SeedGrowthView(mode: .growth, size: 64)
                     .id(seedTick)
                     .frame(maxWidth: .infinity)
                     .accessibilityHidden(true)
@@ -301,26 +305,30 @@ struct MenuBarContent: View {
 
     // MARK: - Actions
 
-    private func pickProjectFolder() {
+    /// Present a folder chooser. We activate the app first: as an accessory
+    /// (menu-bar) app, Seedling isn't frontmost when the popover is clicked, so
+    /// without this the open panel can open *behind* other windows and the user
+    /// sees nothing happen ("stuck"). `.modalPanel` level keeps it above the popover.
+    private func chooseDirectory() -> URL? {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.level = .modalPanel
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func pickProjectFolder() {
+        if let url = chooseDirectory() {
             applyFolder(url)
         }
     }
 
     private func pickFirstPath() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        if panel.runModal() == .OK, let url = panel.url {
+        if let url = chooseDirectory() {
             settings.setMainPath(url)
             applyFolder(url)   // sets folderURL + project name, plays the .birth beat
         }

@@ -67,7 +67,9 @@ final class SeedHUD {
             ctx.duration = 0.35
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            self?.dismissNow()
+            // The animation completion runs on the main thread; hop onto the
+            // main actor explicitly to satisfy isolation checking.
+            MainActor.assumeIsolated { self?.dismissNow() }
         })
     }
 

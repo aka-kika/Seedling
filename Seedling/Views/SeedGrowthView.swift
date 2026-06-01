@@ -23,6 +23,7 @@ enum SeedGrowthMode {
 
 struct SeedGrowthView: View {
     let mode: SeedGrowthMode
+    var size: CGFloat = 120
     var onComplete: (() -> Void)?
 
     @Environment(\.kikaTheme) private var theme
@@ -41,7 +42,7 @@ struct SeedGrowthView: View {
                     style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
                 )
         }
-        .frame(width: 120, height: 120)
+        .frame(width: size, height: size)
         .onAppear {
             if reduceMotion {
                 progress = 1
