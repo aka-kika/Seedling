@@ -103,6 +103,6 @@ private struct SeedHUDContent: View {
         }
         .padding(KikaSpacing.lg)
         .frame(width: 200, height: 220)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

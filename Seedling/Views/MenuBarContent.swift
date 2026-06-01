@@ -38,17 +38,18 @@ struct MenuBarContent: View {
     var body: some View {
         let theme = KikaTheme.resolve(scheme: colorScheme)
 
-        Group {
-            if folderURL == nil {
-                projectEmptyHero(theme: theme)
-            } else {
-                filledState(theme: theme)
+        GlassEffectContainer {
+            Group {
+                if folderURL == nil {
+                    projectEmptyHero(theme: theme)
+                } else {
+                    filledState(theme: theme)
+                }
             }
+            .frame(width: 360)
+            // Liquid Glass surface — floats over the desktop with depth.
+            .glassEffect(.regular, in: .rect(cornerRadius: 20))
         }
-        .frame(width: 360)
-        // HIG: floating panels over desktop should pick up vibrancy so they
-        // blend with whatever's behind the menu bar.
-        .background(.regularMaterial)
         // The "seed is born" beat, played over the popover the first time a
         // folder is chosen, then dismissed to reveal the filled state.
         .overlay {
