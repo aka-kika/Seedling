@@ -11,7 +11,7 @@ enum KikaColors {
     static let textPrimaryDark = Color(hex: 0xD9D9D9)
     static let textSecondDark  = Color(hex: 0xBFBFBF)
     static let textTertDark    = Color(hex: 0x8C8C8C)
-    static let accentDark      = Color(hex: 0x6D80A6)
+    static let accentDark      = Color(hex: 0x97CEC2)
 
     // Light
     static let backgroundLight  = Color(hex: 0xF8F8F8)
@@ -21,7 +21,7 @@ enum KikaColors {
     static let textPrimaryLight = Color(hex: 0x1A1A1A)
     static let textSecondLight  = Color(hex: 0x4A4A4A)
     static let textTertLight    = Color(hex: 0x6B6B6B)
-    static let accentLight      = Color(hex: 0x5A6E94)
+    static let accentLight      = Color(hex: 0x4F9E8E)
 }
 
 enum KikaSpacing {
@@ -31,9 +31,9 @@ enum KikaSpacing {
 }
 
 enum KikaFont {
-    static let title   = Font.system(size: 18, weight: .semibold)
-    static let body    = Font.system(size: 13, weight: .regular)
-    static let caption = Font.system(size: 11, weight: .regular)
+    static let title   = Font.system(size: 15, weight: .semibold)
+    static let body    = Font.system(size: 12, weight: .regular)
+    static let caption = Font.system(size: 10.5, weight: .regular)
 }
 
 // MARK: - Theme
