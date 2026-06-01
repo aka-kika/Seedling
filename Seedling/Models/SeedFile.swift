@@ -336,6 +336,7 @@ final class AppSettings: ObservableObject {
     private let lastProjectNameKey = "seedling.lastProjectName"
     private let lastTaglineKey = "seedling.lastTagline"
     private let globalHotKeyEnabledKey = "seedling.globalHotKeyEnabled"
+    private let mainPathBookmarkKey = "seedling.mainPathBookmark"
 
     @Published var templatesFolderURL: URL? {
         didSet { persistTemplatesBookmark() }
@@ -349,6 +350,10 @@ final class AppSettings: ObservableObject {
     /// Most recently seeded destination folder, with security-scoped bookmark.
     /// Re-opens the popover with this folder pre-selected so re-seeding is one click.
     @Published private(set) var lastFolderURL: URL?
+
+    /// The user's default destination — "your main path." Set once on first run,
+    /// editable in Settings. Persisted as a security-scoped bookmark.
+    @Published private(set) var mainPathURL: URL?
     @Published private(set) var lastProjectName: String = ""
     @Published private(set) var lastTagline: String = ""
 
@@ -416,6 +421,19 @@ final class AppSettings: ObservableObject {
                 self.lastFolderURL = url
             }
         }
+
+        if let data = defaults.data(forKey: mainPathBookmarkKey) {
+            var stale = false
+            if let url = try? URL(
+                resolvingBookmarkData: data,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &stale
+            ) {
+                self.mainPathURL = url
+            }
+        }
+
         self.lastProjectName = defaults.string(forKey: lastProjectNameKey) ?? ""
         self.lastTagline = defaults.string(forKey: lastTaglineKey) ?? ""
     }
@@ -439,6 +457,18 @@ final class AppSettings: ObservableObject {
         }
         defaults.set(projectName, forKey: lastProjectNameKey)
         defaults.set(tagline, forKey: lastTaglineKey)
+    }
+
+    /// Set (or change) the main path. Stores a security-scoped bookmark.
+    func setMainPath(_ url: URL) {
+        let didStart = url.startAccessingSecurityScopedResource()
+        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+        mainPathURL = url
+        if let data = try? url.bookmarkData(
+            options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil
+        ) {
+            defaults.set(data, forKey: mainPathBookmarkKey)
+        }
     }
 
     /// Pick a templates folder. Stores a security-scoped bookmark for sandboxed re-access.
