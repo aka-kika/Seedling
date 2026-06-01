@@ -4,7 +4,7 @@ A calm, premium macOS menu bar app for **seeding new projects with the right mar
 
 Pick a folder, fill in a name, hit **Seed**. Seedling writes the standard set — README, AGENTS, COMMANDS, CONTRIBUTING, LICENSE — and skips any that already exist. Point it at your own templates folder to use your own markdown files instead of the built-in ones.
 
-Built on the **KIKA Design System v2**: dark-first, restrained, with excellent light mode. Audited against the Apple Human Interface Guidelines for macOS.
+Built on the **KIKA Design System v2** with Apple's **Liquid Glass**: dark-first, restrained, a pastel sage accent, and excellent light mode. Audited against the Apple Human Interface Guidelines for macOS.
 
 ---
 
@@ -12,9 +12,10 @@ Built on the **KIKA Design System v2**: dark-first, restrained, with excellent l
 
 | Workflow | What you do |
 |---|---|
-| **First time** | Click the leaf in the menu bar → Pick a project folder → Seed |
-| **Next time** | Click the leaf → The last folder is already chosen → Hit `⌘↩` |
-| **Change templates** | Right-click the leaf → Settings… → Templates folder |
+| **First time** | Click the leaf → *Plant your first seed* → **Choose your path** (your main folder) → it grows |
+| **Next time** | Click the leaf (or `⌥⌘S` from anywhere) → your main path is ready → hit `⌘↩` |
+| **From Finder** | Right-click any folder → Services → **Seed this folder** |
+| **Change main path / templates** | Right-click the leaf → Settings… → Main path / Templates folder |
 | **Light / dark mode** | Right-click the leaf → Settings… → Appearance |
 | **Quit** | Right-click the leaf → Quit Seedling (`⌘Q`) |
 
@@ -24,8 +25,8 @@ When you click **Seed**, Seedling writes the default set (5 built-in files) — 
 
 ## Requirements
 
-- **macOS 14 Sonoma** or later
-- **Xcode 16** or later (for building from source)
+- **macOS 26 Tahoe** or later (required for Liquid Glass)
+- **Xcode 26** or later (for building from source)
 - **Swift 5.9+**
 
 ---

@@ -178,7 +178,7 @@ struct SettingsView: View {
                 Text("Seedling")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(theme.textPrimary)
-                Text("Version 1.6 (build 1)")
+                Text("Version 2.0 (build 1)")
                     .font(KikaFont.caption)
                     .foregroundStyle(theme.textTertiary)
                     .textSelection(.enabled)
