@@ -56,18 +56,17 @@ struct KikaRow<Control: View>: View {
 
 struct KikaPrimaryButtonStyle: ButtonStyle {
     @Environment(\.kikaTheme) private var theme
+    @Environment(\.colorScheme) private var scheme
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(KikaFont.body)
-            .foregroundStyle(.white)
-            .padding(.horizontal, KikaSpacing.md)
-            .padding(.vertical, KikaSpacing.sm - 4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(theme.accent)
-                    .opacity(configuration.isPressed ? 0.85 : 1.0)
-            )
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(scheme == .dark ? Color(hex: 0x0C1A17) : .white)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 18)
+            .glassEffect(.regular.tint(theme.accent).interactive(), in: .rect(cornerRadius: 12))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -76,18 +75,13 @@ struct KikaSecondaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(KikaFont.body)
-            .foregroundStyle(theme.textPrimary)
-            .padding(.horizontal, KikaSpacing.md)
-            .padding(.vertical, KikaSpacing.sm - 4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(configuration.isPressed ? theme.elevated : .clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(theme.border, lineWidth: 1)
-                    )
-            )
+            .font(.system(size: 11.5, weight: .medium))
+            .foregroundStyle(theme.textSecondary)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 12)
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 10))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
