@@ -59,8 +59,9 @@ defaults delete com.seedling.app
 
 | Action | Shortcut | Where |
 |---|---|---|
-| Pick a folder | `⌘O` | Popover (empty + filled state) |
-| Seed | `⌘↩` | Popover (filled state) |
+| Summon from anywhere | `⌥⌘S` | Global (toggle in Settings) |
+| Pick a folder | `⌘O` | Popover |
+| Seed | `⌘↩` | Popover (seed screen) |
 | Close the popover | `Esc` | Popover (anywhere) |
 | Settings | `⌘,` | From the menu bar (right-click → Settings…) |
 | Quit | `⌘Q` | From the menu bar (right-click → Quit) |
@@ -72,21 +73,26 @@ defaults delete com.seedling.app
 ```
 Seedling/
 ├── App/
-│   ├── SeedlingApp.swift          # @main, scenes, App menu
-│   └── AppDelegate.swift          # NSStatusItem, NSPopover, right-click NSMenu
+│   ├── SeedlingApp.swift          # @main, Settings scene, App menu
+│   ├── AppDelegate.swift          # NSStatusItem, NSPopover, right-click NSMenu, hotkey, Finder Service, Settings opening
+│   ├── GlobalHotKey.swift         # Carbon ⌥⌘S summon hotkey
+│   └── SeedHUDPanel.swift         # transient growth-animation panel for Finder-Service seeds
 ├── Theme/
 │   ├── KikaColors.swift           # tokens, KikaTheme.resolve(scheme:), Color(hex:)
-│   └── KikaComponents.swift       # KikaSectionHeader, KikaRow, KikaDivider, button styles
+│   ├── KikaComponents.swift       # KikaSectionHeader, KikaRow, KikaDivider, glass button styles
+│   └── Microinteractions.swift    # focus-underline and other reusable interaction modifiers
 ├── Models/
 │   └── SeedFile.swift             # SeedFile, SeedLibrary, ProjectOptions, AppSettings
 ├── Engine/
 │   ├── Seedling.swift             # template rendering + file writing
 │   └── TemplateLoader.swift       # load user .md files from a folder
 ├── Views/
-│   ├── MenuBarContent.swift       # the popover body (project / source / seed / result)
-│   └── SettingsView.swift         # Settings window (templates + appearance + about)
+│   ├── MenuBarContent.swift       # the popover body (welcome / project / source / seed / result)
+│   ├── WelcomeView.swift          # first-run "Plant your first seed" screen
+│   ├── SeedGrowthView.swift       # line-art seed-growth animation (.birth / .growth)
+│   └── SettingsView.swift         # Settings window (main path + templates + appearance + hotkey + about)
 ├── Resources/
-│   ├── Info.plist                 # LSUIElement = YES (menu bar app)
+│   ├── Info.plist                 # LSUIElement = YES, macOS 26, NSServices (Finder "Seed this folder")
 │   └── Seedling.entitlements      # sandbox + user-selected files + bookmarks
 └── scripts/
     └── smoke_test.swift           # end-to-end engine test

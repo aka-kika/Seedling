@@ -8,23 +8,40 @@
 
 **Seedling** is a small, focused, menu bar app. No main window. No document model. No navigation. No networking. The state surface is tiny — the hard parts are macOS integration and design discipline.
 
-The whole app is **9 Swift files** plus an Xcode project:
+The whole app is **14 Swift files** plus an Xcode project:
 
 | File | Lines | Purpose |
 |---|---|---|
 | `App/SeedlingApp.swift` | 42 | `@main`, `Settings` scene, App menu |
-| `App/AppDelegate.swift` | 169 | `NSStatusItem` + `NSPopover` + right-click `NSMenu` |
-| `Views/MenuBarContent.swift` | 411 | The popover body |
-| `Views/SettingsView.swift` | 183 | Settings window (templates + appearance + about) |
-| `Models/SeedFile.swift` | 468 | `SeedFile`, `SeedLibrary`, `ProjectOptions`, `AppSettings` |
+| `App/AppDelegate.swift` | 307 | `NSStatusItem` + `NSPopover` + right-click `NSMenu` + global hotkey + Finder Service + Settings opening |
+| `App/GlobalHotKey.swift` | 80 | Carbon `RegisterEventHotKey` wrapper for the ⌥⌘S summon hotkey |
+| `App/SeedHUDPanel.swift` | 110 | Transient borderless panel that plays the growth animation for headless (Finder Service) seeds |
+| `Views/MenuBarContent.swift` | 451 | The popover body (welcome / seed / result) |
+| `Views/WelcomeView.swift` | 35 | First-run welcome ("Plant your first seed → Choose your path → …and let it grow") |
+| `Views/SettingsView.swift` | 235 | Settings window (main path + templates + appearance + hotkey + about) |
+| `Views/SeedGrowthView.swift` | 230 | The line-art seed-growth animation (`.birth` / `.growth`) |
+| `Models/SeedFile.swift` | 522 | `SeedFile`, `SeedLibrary`, `ProjectOptions`, `AppSettings` |
 | `Engine/Seedling.swift` | 91 | Template rendering + file writing |
 | `Engine/TemplateLoader.swift` | 77 | Load user `.md` files from a folder |
 | `Theme/KikaColors.swift` | 102 | Color tokens, spacing, fonts, `KikaTheme.resolve(scheme:)` |
-| `Theme/KikaComponents.swift` | 166 | Reusable views: section header, row, divider, button styles |
+| `Theme/KikaComponents.swift` | 160 | Reusable views: section header, row, divider, glass button styles |
+| `Theme/Microinteractions.swift` | 22 | Shared SwiftUI modifiers (focus underline) |
 
-(Line counts current as of the v1.6 docs pass; they may drift ±20 lines as the project evolves. The relative ordering — AppDelegate and MenuBarContent are the largest, KikaColors is the smallest — is stable.)
+(Line counts current as of the v2.0 redesign; they may drift ±20 lines. The relative ordering — `SeedFile.swift`, `MenuBarContent.swift`, and `AppDelegate.swift` are the largest — is stable.)
 
 When in doubt, **read `MenuBarContent.swift` first** — it's the single source of truth for the popover's user-facing flow.
+
+### Platform & design baseline (v2.0)
+
+- **macOS 26 (Tahoe) only.** Deployment target is 26.0 so the app can use Apple's **Liquid Glass** natively (`glassEffect`, `GlassEffectContainer`, `.buttonStyle(.glass/.glassProminent)`) without availability guards.
+- **Accent is pastel sage** — `KikaColors.accentDark = 0x97CEC2`, `accentLight = 0x4F9E8E`. It's the only accent; everything reads it via `theme.accent`.
+- **Liquid Glass replaces `.regularMaterial`** as the surface treatment on the popover and HUD; KIKA rules still hold (one accent, hairlines, no drop shadows — glass provides depth).
+
+### The design history lives in the repo
+
+- `docs/superpowers/specs/2026-06-01-seedling-glass-redesign-design.md` — the approved design spec for the v2.0 redesign.
+- `docs/superpowers/plans/2026-06-01-seedling-glass-redesign.md` — the task-by-task implementation plan.
+- Git history on the `glass-redesign` branch has one commit per task. `main` holds the pre-redesign snapshot.
 
 ---
 
@@ -33,29 +50,34 @@ When in doubt, **read `MenuBarContent.swift` first** — it's the single source 
 ### The shape
 
 ```
-                  NSStatusItem (the leaf icon in the menu bar)
-                            │
-            ┌───────────────┼───────────────┐
-            │                               │
-       left-click                       right-click
-            │                               │
-            ▼                               ▼
-       ┌─────────┐                  ┌────────────┐
-       │ NSPopover│                 │  NSMenu    │
-       │ (SwiftUI)│                 │ About      │
-       │          │                 │ Settings…  │
-       │ empty /  │                 │ Quit       │
-       │ filled   │                 └────────────┘
-       └─────────┘
-            │
-            ▼
+        ⌥⌘S hotkey          NSStatusItem (leaf)          Finder → Services →
+        (GlobalHotKey)            │                      "Seed this folder"
+            │            ┌────────┼────────┐                     │
+            │       left-click          right-click              │
+            ▼            │                  │                    ▼
+       summonPopover ───►│                  ▼            seedFolderFromService
+            │            ▼            ┌────────────┐      → performHeadlessSeed
+            │       ┌─────────┐       │  NSMenu    │             │
+            │       │ NSPopover│      │ About      │             ▼
+            └──────►│ (SwiftUI)│      │ Settings…  │      ┌──────────────┐
+                    │ welcome /│      │ Quit       │      │  SeedHUD     │
+                    │ seed     │      └────────────┘      │ (NSPanel +   │
+                    └─────────┘                           │ SeedGrowth)  │
+                         │                                └──────────────┘
+                         ▼
        MenuBarContent  (SwiftUI view, hosted in NSHostingController)
 ```
 
-- **`AppDelegate`** owns the `NSStatusItem` and the `NSPopover`. It's the only place that touches AppKit.
-- **`SeedlingApp`** is a thin SwiftUI shell that just wires the `AppDelegate` and declares the `Settings` scene.
-- **`MenuBarContent`** is the popover body. It's a SwiftUI `View` — no AppKit needed in here.
+There are **three ways in** — all funnel into the same seed engine + `AppSettings`:
+1. **Left-click / ⌥⌘S** → the popover (`MenuBarContent`).
+2. **Right-click** → `NSMenu` (About / Settings… / Quit).
+3. **Finder → Services → "Seed this folder"** → `seedFolderFromService` → `performHeadlessSeed`, confirmed by the `SeedHUD` panel.
+
+- **`AppDelegate`** owns the `NSStatusItem`, the `NSPopover`, the global hotkey (`GlobalHotKey`), the Services provider, and Settings-window opening. It's the only place that touches AppKit.
+- **`SeedlingApp`** is a thin SwiftUI shell that wires the `AppDelegate` and declares the `Settings` scene.
+- **`MenuBarContent`** is the popover body — a SwiftUI `View` (no AppKit). Branches on `settings.mainPathURL`: `nil` → `WelcomeView`, else the seed/result screen.
 - **`SettingsView`** is the Settings window content. Standard SwiftUI `Form { }`.
+- **`SeedGrowthView`** is the line-art animation, shown inline in the popover and inside `SeedHUD` for headless seeds.
 
 ### State
 
@@ -84,14 +106,18 @@ The `Notification.Name` is a bit much for two collaborators, but it keeps `MenuB
 
 ## 3. The popover flow
 
-`MenuBarContent.body` is a 2-way branch:
+`MenuBarContent.body` branches on **`settings.mainPathURL`** (the persisted default destination, "your main path"):
 
 | State | Trigger | What renders |
 |---|---|---|
-| **Empty hero** | `folderURL == nil` | Centered leaf + "Seed a new project" + "Choose Folder…" primary button |
-| **Filled state** | `folderURL != nil` | Scrollable Project section + Source section + Result section (if any) + pinned action bar with Seed button + icon buttons |
+| **Welcome** | `mainPathURL == nil` (first run) | `WelcomeView`: leaf → "Plant your first seed" → **Choose your path** → "…and let it grow" → ⌥⌘S hint. Choosing a folder calls `setMainPath`, plays the `.birth` animation, and reveals the seed screen. |
+| **Seed / result** | `mainPathURL != nil` | Project section + Source section + Result section (with the `.growth` animation, if seeded) + pinned action bar (Seed + folder + reset). Sized to show in **one window without scrolling** (`maxHeight: 480`). |
 
-The transition is driven by `MenuBarContent`'s local `@State folderURL`, which is set by `pickProjectFolder()` and reset by `resetForm()`. The `restoreLastSeed()` hook fires once per popover open to pre-fill from `AppSettings.lastFolderURL` / `lastProjectName` / `lastTagline`.
+Folder choosing goes through `chooseDirectory()`, which **calls `NSApp.activate(ignoringOtherApps:)` before `NSOpenPanel.runModal()`** — see §6 (accessory-app gotchas) for why. `restoreLastSeed()` fires once per popover open, pre-filling `folderURL` from `mainPathURL` first (then `lastFolderURL`), plus `lastProjectName` / `lastTagline`. `resetForm()` re-pins to the main path rather than clearing to nil.
+
+### The seed-growth animation (`SeedGrowthView`)
+
+Pure SwiftUI line art (no assets). Two `Shape`s (a filled seed dot + a stroked stem/leaves) are driven by a single animatable `progress`, so SwiftUI calls `path(in:)` at each interpolated step and the segment-by-segment drawing is frame-exact (a plain `.trim` can't stagger like this). Modes: `.birth` (welcome beat, on first folder choice) and `.growth` (every successful seed). Takes a `size:` param (120 default; 64 inline in the result so it fits without scrolling). Honors `accessibilityReduceMotion` by snapping to the final frame. Microinteractions (`Theme/Microinteractions.swift`): a focus-underline that draws under a focused text field; rows fade-rise on appear; buttons "give" on press (in the glass button styles).
 
 ### Where the Seed action actually lives
 
@@ -144,15 +170,16 @@ Seedling is a sandboxed app. The entitlements are:
 
 What this means in practice:
 
-- The user must explicitly pick any folder we touch (templates folder, last-seeded folder). We can't poke at arbitrary paths.
+- The user must explicitly pick any folder we touch (main path, templates folder, last-seeded folder). We can't poke at arbitrary paths.
 - To survive across launches, every URL we persist must be a **security-scoped bookmark** (`URL.bookmarkData(options: [.withSecurityScope], ...)`).
 - Before reading or writing a bookmarked URL, call `url.startAccessingSecurityScopedResource()`; after, call `url.stopAccessingSecurityScopedResource()`.
+- The **Finder Service** path is special: when the user invokes "Seed this folder", macOS hands us a temporary sandbox extension for *that* folder, so `performHeadlessSeed` can write without the folder being pre-bookmarked.
 
-`AppSettings` handles this in three places:
+`AppSettings` persists **three** security-scoped bookmarks, each with the same shape (a key constant, a resolve-on-init branch, and a setter that wraps start/stop access):
 
-- `init(...)` — resolves both bookmarks (templates + last-seeded) on launch.
-- `setTemplatesFolder(from:)` — wraps the URL access in start/stop and stores a fresh bookmark.
-- `recordSeed(folder:projectName:tagline:)` — same pattern for the destination.
+- `mainPathURL` ← `mainPathBookmarkKey`, set by `setMainPath(_:)` — the default destination ("your main path").
+- `templatesFolderURL` ← `templatesBookmarkKey`, set by `setTemplatesFolder(from:)`.
+- `lastFolderURL` ← `lastFolderBookmarkKey`, set by `recordSeed(folder:projectName:tagline:)`.
 
 `TemplateLoader.load(from:)` requires the caller to wrap it in start/stop. The popover does this in `filesToSeed`:
 
@@ -164,7 +191,7 @@ let loaded = TemplateLoader.load(from: url)
 
 `AppSettings.beginTemplatesAccess() / endTemplatesAccess()` are thin wrappers that return a `Bool` indicating whether access was granted, so the caller can skip `endAccess` if the start failed.
 
-**Gotcha:** If you ever add a third persistent URL (e.g. a "favorite destinations" list), you need a third bookmark key, a third resolve-on-init branch, and a third setter that wraps the access pattern. Don't reach for a more general abstraction until you have at least three — the explicit code is easier to debug.
+**Gotcha:** there are now three near-identical bookmark blocks (the original docs predicted this would be the moment to generalize). It's still deliberately explicit — three short, debuggable copies beat one clever abstraction. If you add a *fourth*, that's the time to extract a small `BookmarkedFolder` helper.
 
 ---
 
@@ -222,6 +249,23 @@ eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rig
 
 `addGlobalMonitorForEvents` requires an accessibility permission for the *caller*, but a sandboxed app calling it for its own popover doesn't need that — the system has implicit permission for the app's own UI. **Don't** add a global event monitor for *other apps'* windows; that does require accessibility.
 
+### Global summon hotkey (⌥⌘S)
+
+`GlobalHotKey` wraps Carbon's `RegisterEventHotKey` — the **sandbox-safe** way to register a system-wide hotkey with **no Accessibility / Input-Monitoring prompt** (a global `NSEvent` keyDown monitor would require Input Monitoring and a permission prompt, which fights the "invisible" goal). `AppDelegate.refreshHotKey()` registers/unregisters it based on `settings.globalHotKeyEnabled` (Combine-subscribed, like the icon). The handler is `summonPopover()`: it **must** `NSApp.activate(ignoringOtherApps:)` before `togglePopover()`, or the popover won't take keyboard focus when another app is frontmost. The combo is fixed (`kVK_ANSI_S` + `cmdKey|optionKey`); there's a Settings toggle but no recorder.
+
+### Finder Service ("Seed this folder")
+
+Declared in `Info.plist` under `NSServices` (`NSMessage = seedFolderFromService`, `NSSendFileTypes = ["public.folder"]`). `AppDelegate` sets `NSApp.servicesProvider = self` + `NSUpdateDynamicServices()` at launch. The handler `seedFolderFromService(_:userData:error:)` reads folder URLs from the pasteboard and calls `performHeadlessSeed(into:)`, which reuses `settings.resolveSeedFiles()` + `Seedling.seed(...)`, then shows the `SeedHUD` growth panel and reveals the created files in Finder.
+
+**Gotcha (learned the hard way):** do **not** filter the pasteboard URLs with `URL.hasDirectoryPath` — the directory hint is lost across the Service's pasteboard round-trip, so it returns `false` and silently drops every invocation. Check the filesystem instead (`FileManager.fileExists(atPath:isDirectory:)`). The Service item appears under Finder right-click → **Services**; macOS sometimes needs `/System/Library/CoreServices/pbs -flush` or a re-login to list a freshly-registered service.
+
+### Accessory-app gotchas (these will bite you)
+
+This is an `LSUIElement` (`.accessory`) app — no Dock icon, rarely "frontmost". Two consequences cost real debugging time:
+
+1. **`NSOpenPanel.runModal()` opens *behind* everything** unless you `NSApp.activate(ignoringOtherApps:)` first. Symptom: clicking a "choose folder" button does nothing visible ("stuck"). Always go through `MenuBarContent.chooseDirectory()` / `SettingsView.chooseDirectory()`, which activate first and set `panel.level = .modalPanel`.
+2. **The SwiftUI `Settings` scene won't surface** while the app is `.accessory`. `openSettings()` switches to `.regular`, activates, then sends `showSettingsWindow:`; `handleWindowClose(_:)` drops back to `.accessory` when the last titled window closes (so the Dock icon only appears while Settings/About is open). Don't "simplify" this back to a bare `sendAction` — it won't open.
+
 ---
 
 ## 7. The Settings window
@@ -236,13 +280,9 @@ Settings {
 .windowResizability(.contentSize)
 ```
 
-This automatically:
-- Wires `⌘,` to open it.
-- Adds a `Settings…` item to the App menu.
-- Wires it to the right-click menu's `Settings…` action.
-- Prevents the user from resizing it (via `.windowResizability(.contentSize)`).
+This declares the scene and prevents resizing. **But** opening it is not automatic for an accessory app — see §6 "Accessory-app gotchas": `AppDelegate.openSettings()` flips to `.regular`, activates, and sends `showSettingsWindow:`, restoring `.accessory` on close. `⌘,` only works once a window of the app is key (i.e. after Settings/About is already open); the reliable entry point is right-click → Settings….
 
-`SettingsView` is a `Form { }` with three sections: Templates folder, Appearance, About. The templates hero is a custom card (not a `Form` row) because it needs an elevated background and inline path display — `Form` rows can't do that.
+`SettingsView` is a `Form { }` with five sections: **Main path**, Templates folder, Appearance, Shortcut (the ⌥⌘S toggle), and About. The templates hero is a custom card (not a `Form` row) because it needs an elevated background and inline path display. Both folder pickers go through a local `chooseDirectory()` that activates the app first.
 
 ---
 
@@ -345,11 +385,21 @@ Search for `3.0` in `App/AppDelegate.swift`. The single match is the `DispatchQu
 
 ### "Reset the first-run experience"
 
-There's no first-run experience anymore. If you want to test the empty hero, just kill Seedling and clear the last-folder bookmark:
+First run is gated by `mainPathURL == nil` (the `WelcomeView`). To see the welcome flow again, clear all persisted state:
 
 ```bash
-defaults delete com.seedling.app seedling.lastFolderBookmark
+defaults delete com.seedling.app
+killall Seedling
+open build/Build/Products/Debug/Seedling.app
 ```
+
+### "Change the summon hotkey"
+
+The combo is fixed in `App/GlobalHotKey.swift` (`defaultKeyCode` / `defaultModifiers`). Change those two; there is no recorder UI (deliberate — there's just an on/off toggle in Settings bound to `AppSettings.globalHotKeyEnabled`).
+
+### "Verify the Finder Service end-to-end"
+
+You can drive it without Finder using `NSPerformService` from a Swift script: put a folder URL on a pasteboard and call `NSPerformService("Seedling/Seed this folder", pboard)`, then check the folder for the seeded files. (This is how the Service bug was caught — `runModal`-free, observable on disk.)
 
 ---
 
@@ -358,9 +408,9 @@ defaults delete com.seedling.app seedling.lastFolderBookmark
 Seedling is built on the KIKA Design System v2. The hard rules:
 
 - **No hardcoded colors at call sites.** Always go through `KikaTheme.resolve(scheme: colorScheme)` and read tokens from the resolved `KikaTheme`. The `KikaColors` enum exists for *token definition*, not for direct use.
-- **No custom fonts.** `Font.system(size:weight:)` only, via `KikaFont.title / body / caption`.
-- **No drop shadows.** Use `RoundedRectangle().fill(surface)` or `.regularMaterial` to imply elevation.
-- **No multi-color palettes.** Accent is `KikaColors.accentDark` / `accentLight` — the only accent in the app.
+- **No custom fonts.** `Font.system(size:weight:)` only, via `KikaFont.title / body / caption` (now 15 / 12 / 10.5 — the v2.0 "smaller, higher-end" pass).
+- **No drop shadows.** Depth comes from **Liquid Glass** (`.glassEffect(...)`) on floating surfaces, or `RoundedRectangle().fill(surface)` for inline cards — never a shadow.
+- **No multi-color palettes.** Accent is the pastel sage `KikaColors.accentDark` (`0x97CEC2`) / `accentLight` (`0x4F9E8E`) — the only accent. On the prominent glass button, label ink is dark (`0x0C1A17`) in dark mode for legibility on the light accent.
 - **One primary action per view.** Don't stack two `KikaPrimaryButtonStyle` buttons side-by-side.
 - **SF Symbols only.** `Image(systemName: ...)` and `Label`. No custom icon assets.
 - **Three gap values: 12, 16, 20.** `KikaSpacing.sm / md / lg`. Don't introduce arbitrary `padding(8)`.
@@ -376,11 +426,11 @@ If you're ever tempted to add a "feature" that violates these (e.g. a colored ic
 
 Seedling was audited against the Apple HIG for macOS (loaded from `~/Documents/OPENSKILLZ/apple-hig-swiftui-macos`). Compliance highlights:
 
-- **Menu bar app pattern** — `LSUIElement = true`, no Dock icon, no main window, `NSStatusItem` owns the entry point.
-- **Standard App menu** — `CommandGroup(replacing: .appInfo)` for About. The `Settings` scene automatically wires Settings (`⌘,`) and Quit (`⌘Q`).
+- **Menu bar app pattern** — `LSUIElement = true`, no Dock icon (except transiently while Settings/About is open), no main window, `NSStatusItem` owns the entry point.
+- **Standard App menu** — `CommandGroup(replacing: .appInfo)` for About. The `Settings` scene declares Settings; opening it is handled in `AppDelegate` (see §6/§7).
 - **Settings via `Settings { }` scene** — not a sheet, not a custom window. Standard `Form { }` inside.
 - **Settings `.windowResizability(.contentSize)`** — settings windows shouldn't be user-resizable.
-- **Floating panel uses `.regularMaterial`** — the popover picks up desktop vibrancy.
+- **Floating surfaces use Liquid Glass** — the popover and HUD use `.glassEffect(...)` (macOS 26).
 - **Keyboard** — `⌘O` (pick folder), `⌘↩` (seed), `Esc` (close popover via `.onExitCommand`), `⌘,` (settings), `⌘Q` (quit).
 - **Accessibility** — every icon-only button has `.accessibilityLabel` and `.accessibilityInputLabels([...])`. Section headers are `.accessibilityAddTraits(.isHeader)` for the VoiceOver rotor. `AccessibilityNotification.Announcement` posts the result of every Seed.
 - **SF Symbols** — `.imageScale(.medium)` instead of hardcoded `.font(.system(size:))` for icons. `.symbolRenderingMode(.hierarchical)` for the leaf icon and folder icons in Settings.
@@ -421,8 +471,8 @@ If you ever change one of these, re-read the relevant HIG reference (`accessibil
 
 | File | Notes |
 |---|---|
-| `Seedling.xcodeproj/project.pbxproj` | Hand-maintained. Adding a new Swift file requires: (1) `PBXBuildFile` entry, (2) `PBXFileReference` entry, (3) entry in the appropriate `PBXGroup` (App / Engine / Models / Resources / Theme / Views), (4) entry in `PBXSourcesBuildPhase`. Use unique 24-character hex IDs — `A1000001000000000000XXXX` for `PBXBuildFile`, `A1000002000000000000XXXX` for `PBXFileReference`. |
-| `Seedling/Resources/Info.plist` | `LSUIElement = true` is the only thing that makes this a menu bar app. `CFBundleShortVersionString` is the version shown in About. |
+| `Seedling.xcodeproj/project.pbxproj` | Hand-maintained. Adding a new Swift file requires: (1) `PBXBuildFile` entry, (2) `PBXFileReference` entry, (3) entry in the appropriate `PBXGroup` (App / Engine / Models / Resources / Theme / Views), (4) entry in `PBXSourcesBuildPhase`. Use unique 24-character hex IDs — `A1000001000000000000XXXX` for `PBXBuildFile`, `A1000002000000000000XXXX` for `PBXFileReference`. The `XXXX` suffixes are in use up to `A010`; the next file is `A011`. `MACOSX_DEPLOYMENT_TARGET = 26.0` in all four configs. |
+| `Seedling/Resources/Info.plist` | `LSUIElement = true` makes this a menu bar app; `LSMinimumSystemVersion = 26.0`. The `NSServices` array declares the Finder "Seed this folder" service (`NSMessage = seedFolderFromService`, `NSSendFileTypes = ["public.folder"]`). `CFBundleShortVersionString` is the bundle version; the human-facing version is the hardcoded string in `SettingsView.aboutBlock` (currently "2.0"). |
 | `Seedling/Resources/Seedling.entitlements` | Sandbox + user-selected files + bookmarks. Removing any of these will break the app. |
 | `Seedling.xcodeproj/project.xcworkspace/contents.xcworkspacedata` | Auto-generated by Xcode. Don't hand-edit. |
 | `Seedling.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings` | Build system + preview settings. |
@@ -435,8 +485,10 @@ If you ever change one of these, re-read the relevant HIG reference (`accessibil
 - **UI logic** → `Views/`
 - **Persistent user state** → `Models/SeedFile.swift` (the `AppSettings` class)
 - **Pure file I/O** → `Engine/`
-- **AppKit / system integration** → `App/AppDelegate.swift`
+- **AppKit / system integration** (status item, hotkey, Services, Settings opening, HUD) → `App/`
 - **Reusable visual component** → `Theme/KikaComponents.swift`
+- **A reusable interaction modifier** (press, focus, hover) → `Theme/Microinteractions.swift`
+- **Animation / motion** → `Views/SeedGrowthView.swift`
 - **Color / font / spacing token** → `Theme/KikaColors.swift`
 - **A new built-in markdown file** → `Models/SeedFile.swift`'s `SeedLibrary.files`
 
