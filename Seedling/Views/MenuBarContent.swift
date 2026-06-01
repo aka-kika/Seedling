@@ -22,6 +22,13 @@ struct MenuBarContent: View {
     @State private var birthPlaying = false
     /// Bumped on every successful seed so the growth animation replays from scratch.
     @State private var seedTick = 0
+    /// Drives the fade-rise reveal of the filled state content.
+    @State private var contentAppeared = false
+
+    private enum Field { case name, tagline }
+    @FocusState private var focusedField: Field?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var canSeed: Bool {
         folderURL != nil && !isWorking
@@ -89,6 +96,16 @@ struct MenuBarContent: View {
                     }
                 }
                 .padding(KikaSpacing.md)
+                .opacity(contentAppeared ? 1 : 0)
+                .offset(y: contentAppeared ? 0 : 6)
+                .onAppear {
+                    guard !contentAppeared else { return }
+                    if reduceMotion {
+                        contentAppeared = true
+                    } else {
+                        withAnimation(.easeOut(duration: 0.3)) { contentAppeared = true }
+                    }
+                }
             }
             .frame(maxHeight: 300)
 
@@ -170,8 +187,10 @@ struct MenuBarContent: View {
                     .textFieldStyle(.plain)
                     .font(KikaFont.body)
                     .foregroundStyle(theme.textPrimary)
+                    .focused($focusedField, equals: .name)
             }
             .frame(minHeight: 28)
+            .focusUnderline(focusedField == .name)
 
             HStack(spacing: KikaSpacing.md) {
                 Image(systemName: "tag")
@@ -182,8 +201,10 @@ struct MenuBarContent: View {
                     .textFieldStyle(.plain)
                     .font(KikaFont.body)
                     .foregroundStyle(theme.textPrimary)
+                    .focused($focusedField, equals: .tagline)
             }
             .frame(minHeight: 28)
+            .focusUnderline(focusedField == .tagline)
         }
     }
 

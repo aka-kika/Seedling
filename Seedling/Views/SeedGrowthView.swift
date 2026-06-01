@@ -29,7 +29,7 @@ struct SeedGrowthView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 0
 
-    private var duration: Double { mode == .birth ? 1.4 : 1.6 }
+    private var duration: Double { mode == .birth ? 1.2 : 1.4 }
 
     var body: some View {
         ZStack {
@@ -38,7 +38,7 @@ struct SeedGrowthView: View {
             SeedGrowthShape(mode: mode, progress: progress)
                 .stroke(
                     theme.accent,
-                    style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round)
+                    style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round)
                 )
         }
         .frame(width: 120, height: 120)
