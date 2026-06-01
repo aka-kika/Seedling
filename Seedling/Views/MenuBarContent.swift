@@ -40,8 +40,8 @@ struct MenuBarContent: View {
 
         GlassEffectContainer {
             Group {
-                if folderURL == nil {
-                    projectEmptyHero(theme: theme)
+                if settings.mainPathURL == nil {
+                    WelcomeView(onChoose: pickFirstPath)
                 } else {
                     filledState(theme: theme)
                 }
@@ -69,37 +69,6 @@ struct MenuBarContent: View {
         // HIG: bind Esc to close the popover. SwiftUI routes Esc through
         // .onExitCommand on the popover's root view.
         .onExitCommand { NSApp.sendAction(#selector(NSPopover.performClose(_:)), to: nil, from: nil) }
-    }
-
-    // MARK: - Empty state (no project folder picked yet)
-
-    private func projectEmptyHero(theme: KikaTheme) -> some View {
-        VStack(alignment: .center, spacing: KikaSpacing.md) {
-            Spacer(minLength: KikaSpacing.md)
-            Image(systemName: "leaf")
-                .font(.system(size: 32, weight: .regular))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(theme.accent)
-            Text("Seed a new project")
-                .font(KikaFont.title)
-                .foregroundStyle(theme.textPrimary)
-            Text("Pick a folder to drop the right markdown files in.")
-                .font(KikaFont.body)
-                .foregroundStyle(theme.textSecondary)
-                .multilineTextAlignment(.center)
-            Spacer(minLength: KikaSpacing.sm)
-            Button {
-                pickProjectFolder()
-            } label: {
-                Text("Choose Folder…")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(KikaPrimaryButtonStyle())
-            .keyboardShortcut("o", modifiers: [.command])
-            .accessibilityLabel("Choose folder")
-            Spacer(minLength: KikaSpacing.md)
-        }
-        .padding(.horizontal, KikaSpacing.lg)
     }
 
     // MARK: - Filled state
@@ -323,6 +292,19 @@ struct MenuBarContent: View {
         }
     }
 
+    private func pickFirstPath() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.setMainPath(url)
+            applyFolder(url)   // sets folderURL + project name, plays the .birth beat
+        }
+    }
+
     private func applyFolder(_ url: URL) {
         // Only celebrate the first folder choice (empty hero → filled), not
         // later "Change folder" swaps.
@@ -339,8 +321,8 @@ struct MenuBarContent: View {
     }
 
     private func resetForm() {
-        folderURL = nil
-        projectName = ""
+        folderURL = settings.mainPathURL
+        projectName = settings.mainPathURL?.lastPathComponent ?? ""
         tagline = ""
         lastResult = nil
         errorMessage = nil
@@ -395,7 +377,10 @@ struct MenuBarContent: View {
     private func restoreLastSeed() {
         guard !didRestore else { return }
         didRestore = true
-        if let url = settings.lastFolderURL {
+        if let url = settings.mainPathURL {
+            folderURL = url
+            if projectName.isEmpty { projectName = url.lastPathComponent }
+        } else if let url = settings.lastFolderURL {
             folderURL = url
         }
         if !settings.lastProjectName.isEmpty {
