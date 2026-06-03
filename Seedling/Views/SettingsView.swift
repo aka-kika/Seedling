@@ -15,8 +15,8 @@ struct SettingsView: View {
         settings.templatesFolderURL != nil
     }
 
-    private var mainPath: String {
-        settings.mainPathURL?.path ?? "Not set"
+    private var projectsHome: String {
+        settings.projectsHomeURL?.path ?? "Not set"
     }
 
     var body: some View {
@@ -28,13 +28,13 @@ struct SettingsView: View {
             Section {
                 templatesHero(theme: theme)
             } header: {
-                Text("Templates folder")
+                Text("Seed library")
                     .accessibilityAddTraits(.isHeader)
             }
 
             Section {
                 KikaRow(icon: "folder", label: "Location") {
-                    Text(mainPath)
+                    Text(projectsHome)
                         .font(KikaFont.caption)
                         .foregroundStyle(theme.textTertiary)
                         .lineLimit(1)
@@ -42,12 +42,16 @@ struct SettingsView: View {
                         .textSelection(.enabled)
                 }
                 Button("Change…") {
-                    pickMainPath()
+                    pickProjectsHome()
                 }
                 .buttonStyle(KikaSecondaryButtonStyle())
-                .accessibilityLabel("Change main path")
+                .accessibilityLabel("Change Projects home")
+                Text("New projects are created as subfolders here. Naming a project in the window creates a folder with that name and plants the seeds inside it.")
+                    .font(KikaFont.caption)
+                    .foregroundStyle(theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             } header: {
-                Text("Main path")
+                Text("Projects home")
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -129,7 +133,7 @@ struct SettingsView: View {
                 .accessibilityLabel(isCustomTemplates ? "Change templates folder" : "Choose templates folder")
             }
 
-            Text("Markdown files in this folder are the seed files written into new projects when you click Seed. The built-in library is used when no folder is set.")
+            Text("Markdown files in this folder are the seeds planted into each new project. The built-in library is used when no folder is set.")
                 .font(KikaFont.caption)
                 .foregroundStyle(theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -178,13 +182,13 @@ struct SettingsView: View {
                 Text("Seedling")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(theme.textPrimary)
-                Text("Version 2.0 (build 1)")
+                Text("Version 3.0 (build 1)")
                     .font(KikaFont.caption)
                     .foregroundStyle(theme.textTertiary)
                     .textSelection(.enabled)
             }
 
-            Text("A calm menu bar app for seeding new projects with the right markdown files. Built on the KIKA Design System v2.")
+            Text("A calm app for seeding new projects with the right markdown files. Built on the KIKA Design System v2.")
                 .font(KikaFont.body)
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -199,7 +203,7 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, KikaSpacing.sm)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("About Seedling. Version 1.6. A calm menu bar app for seeding new projects with the right markdown files.")
+        .accessibilityLabel("About Seedling. Version 3.0. A calm app for seeding new projects with the right markdown files.")
     }
 
     private func pickTemplatesFolder() {
@@ -208,9 +212,9 @@ struct SettingsView: View {
         }
     }
 
-    private func pickMainPath() {
+    private func pickProjectsHome() {
         if let url = chooseDirectory() {
-            settings.setMainPath(url)
+            settings.setProjectsHome(url)
         }
     }
 
