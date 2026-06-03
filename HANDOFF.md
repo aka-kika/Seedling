@@ -8,28 +8,30 @@
 
 **Seedling** is a small, focused, menu bar app. No main window. No document model. No navigation. No networking. The state surface is tiny — the hard parts are macOS integration and design discipline.
 
-The whole app is **14 Swift files** plus an Xcode project:
+The whole app is **16 Swift files** plus an Xcode project:
 
-| File | Lines | Purpose |
-|---|---|---|
-| `App/SeedlingApp.swift` | 42 | `@main`, `Settings` scene, App menu |
-| `App/AppDelegate.swift` | 307 | `NSStatusItem` + `NSPopover` + right-click `NSMenu` + global hotkey + Finder Service + Settings opening |
-| `App/GlobalHotKey.swift` | 80 | Carbon `RegisterEventHotKey` wrapper for the ⌥⌘S summon hotkey |
-| `App/SeedHUDPanel.swift` | 110 | Transient borderless panel that plays the growth animation for headless (Finder Service) seeds |
-| `Views/MenuBarContent.swift` | 451 | The popover body (welcome / seed / result) |
-| `Views/WelcomeView.swift` | 35 | First-run welcome ("Plant your first seed → Choose your path → …and let it grow") |
-| `Views/SettingsView.swift` | 235 | Settings window (main path + templates + appearance + hotkey + about) |
-| `Views/SeedGrowthView.swift` | 230 | The line-art seed-growth animation (`.birth` / `.growth`) |
-| `Models/SeedFile.swift` | 522 | `SeedFile`, `SeedLibrary`, `ProjectOptions`, `AppSettings` |
-| `Engine/Seedling.swift` | 91 | Template rendering + file writing |
-| `Engine/TemplateLoader.swift` | 77 | Load user `.md` files from a folder |
-| `Theme/KikaColors.swift` | 102 | Color tokens, spacing, fonts, `KikaTheme.resolve(scheme:)` |
-| `Theme/KikaComponents.swift` | 160 | Reusable views: section header, row, divider, glass button styles |
-| `Theme/Microinteractions.swift` | 22 | Shared SwiftUI modifiers (focus underline) |
+| File | Purpose |
+|---|---|
+| `App/SeedlingApp.swift` | `@main`, `Settings` scene, App menu |
+| `App/AppDelegate.swift` | `NSStatusItem` + right-click `NSMenu` + global hotkey + Finder Service + Settings opening; summons the ceremony window |
+| `App/CeremonyWindowController.swift` | Centered, borderless, key-accepting `NSPanel` (the ceremony window) that hosts `SeedCeremonyView`; fade in/out + outside-click dismissal |
+| `App/GlobalHotKey.swift` | Carbon `RegisterEventHotKey` wrapper for the ⌥⌘S summon hotkey |
+| `App/SeedHUDPanel.swift` | Transient borderless panel that plays the growth animation for headless (Finder Service) seeds |
+| `Views/SeedCeremonyView.swift` | The ceremony body — the zen rest → growing → alive flow (plus first-run onboarding) |
+| `Views/SettingsView.swift` | Settings window (Projects home + seed library + appearance + hotkey + about) |
+| `Views/SeedGrowthView.swift` | The line-art seed-growth animation (`.birth` / `.growth`), completing in a soft bloom |
+| `Models/SeedFile.swift` | `SeedFile`, `SeedLibrary`, `ProjectOptions`, `AppSettings` |
+| `Models/BookmarkedFolder.swift` | Reusable security-scoped folder bookmark (resolve / store / clear) |
+| `Engine/Seedling.swift` | Template rendering + file writing + `SeedResult` formatting |
+| `Engine/ProjectSeeder.swift` | Sanitize a name, create `ProjectsHome/<name>`, seed into it (never overwrites) |
+| `Engine/TemplateLoader.swift` | Load user `.md` files from a folder |
+| `Theme/KikaColors.swift` | Color tokens, spacing, fonts, `KikaTheme.resolve(scheme:)` |
+| `Theme/KikaComponents.swift` | Reusable views: section header, row, divider, glass button styles |
+| `Theme/Microinteractions.swift` | Shared SwiftUI modifiers (focus underline) |
 
-(Line counts current as of the v2.0 redesign; they may drift ±20 lines. The relative ordering — `SeedFile.swift`, `MenuBarContent.swift`, and `AppDelegate.swift` are the largest — is stable.)
+(The largest files — `SeedFile.swift`, `AppDelegate.swift`, `SeedCeremonyView.swift` — are the ones you'll spend the most time in.)
 
-When in doubt, **read `MenuBarContent.swift` first** — it's the single source of truth for the popover's user-facing flow.
+When in doubt, **read `SeedCeremonyView.swift` first** — it's the single source of truth for the ceremony's user-facing flow.
 
 ### Platform & design baseline (v2.0)
 
@@ -39,9 +41,10 @@ When in doubt, **read `MenuBarContent.swift` first** — it's the single source 
 
 ### The design history lives in the repo
 
-- `docs/superpowers/specs/2026-06-01-seedling-glass-redesign-design.md` — the approved design spec for the v2.0 redesign.
-- `docs/superpowers/plans/2026-06-01-seedling-glass-redesign.md` — the task-by-task implementation plan.
-- Git history on the `glass-redesign` branch has one commit per task. `main` holds the pre-redesign snapshot.
+- `docs/superpowers/specs/2026-06-03-seedling-zen-redesign-design.md` — the approved design spec for the **v3.0 Zen ceremony redesign** (current source of truth).
+- `docs/superpowers/plans/2026-06-03-seedling-zen-redesign.md` — the task-by-task implementation plan for v3.0.
+- `docs/superpowers/specs/2026-06-01-seedling-glass-redesign-design.md` + `plans/2026-06-01-seedling-glass-redesign.md` — the **v2.0 popover** redesign. **Archive** — these describe the old menu-bar popover, which v3.0 replaced with the centered ceremony window.
+- Git history has one commit per task. `main` holds the pre-redesign snapshot.
 
 ---
 
@@ -55,82 +58,87 @@ When in doubt, **read `MenuBarContent.swift` first** — it's the single source 
             │            ┌────────┼────────┐                     │
             │       left-click          right-click              │
             ▼            │                  │                    ▼
-       summonPopover ───►│                  ▼            seedFolderFromService
+      ceremony.summon ──►│                  ▼            seedFolderFromService
             │            ▼            ┌────────────┐      → performHeadlessSeed
-            │       ┌─────────┐       │  NSMenu    │             │
-            │       │ NSPopover│      │ About      │             ▼
-            └──────►│ (SwiftUI)│      │ Settings…  │      ┌──────────────┐
-                    │ welcome /│      │ Quit       │      │  SeedHUD     │
-                    │ seed     │      └────────────┘      │ (NSPanel +   │
-                    └─────────┘                           │ SeedGrowth)  │
+            │   ┌──────────────┐      │  NSMenu    │             │
+            │   │ CeremonyWindow│     │ About      │             ▼
+            └──►│ Controller    │     │ Settings…  │      ┌──────────────┐
+                │ (NSPanel +    │     │ Quit       │      │  SeedHUD     │
+                │ SeedCeremony) │     └────────────┘      │ (NSPanel +   │
+                └──────────────┘                          │ SeedGrowth)  │
                          │                                └──────────────┘
                          ▼
-       MenuBarContent  (SwiftUI view, hosted in NSHostingController)
+     SeedCeremonyView  (SwiftUI view, hosted in the controller's NSPanel)
 ```
 
 There are **three ways in** — all funnel into the same seed engine + `AppSettings`:
-1. **Left-click / ⌥⌘S** → the popover (`MenuBarContent`).
+1. **Left-click / ⌥⌘S** → the centered ceremony window (`CeremonyWindowController` → `SeedCeremonyView`).
 2. **Right-click** → `NSMenu` (About / Settings… / Quit).
 3. **Finder → Services → "Seed this folder"** → `seedFolderFromService` → `performHeadlessSeed`, confirmed by the `SeedHUD` panel.
 
-- **`AppDelegate`** owns the `NSStatusItem`, the `NSPopover`, the global hotkey (`GlobalHotKey`), the Services provider, and Settings-window opening. It's the only place that touches AppKit.
+- **`AppDelegate`** owns the `NSStatusItem`, the global hotkey (`GlobalHotKey`), the Services provider, and Settings-window opening, and holds the `CeremonyWindowController`. It's the only place (besides the controller) that touches AppKit.
+- **`CeremonyWindowController`** owns the borderless `KeyablePanel`, hosts `SeedCeremonyView`, and handles fade in/out + outside-click dismissal.
 - **`SeedlingApp`** is a thin SwiftUI shell that wires the `AppDelegate` and declares the `Settings` scene.
-- **`MenuBarContent`** is the popover body — a SwiftUI `View` (no AppKit). Branches on `settings.mainPathURL`: `nil` → `WelcomeView`, else the seed/result screen.
+- **`SeedCeremonyView`** is the ceremony body — a SwiftUI `View` (the `NSOpenPanel` for onboarding is the only AppKit it touches). Branches on `phase` (onboarding / rest / growing / alive / failed).
 - **`SettingsView`** is the Settings window content. Standard SwiftUI `Form { }`.
-- **`SeedGrowthView`** is the line-art animation, shown inline in the popover and inside `SeedHUD` for headless seeds.
+- **`SeedGrowthView`** is the line-art animation, shown in the ceremony window and inside `SeedHUD` for headless seeds.
 
 ### State
 
 | State | Lives in | Type | Persisted? |
 |---|---|---|---|
-| Templates folder (the source) | `AppSettings.templatesFolderURL` | `@Published` | Yes — security-scoped bookmark |
-| Last-seeded folder (the destination) | `AppSettings.lastFolderURL` | `@Published private(set)` | Yes — security-scoped bookmark |
-| Last project name / tagline | `AppSettings.lastProjectName` / `lastTagline` | `@Published private(set)` | Yes — plain strings |
+| Seed library (the source) | `AppSettings.templatesFolderURL` | `@Published` | Yes — security-scoped bookmark |
+| Projects home (the destination root) | `AppSettings.projectsHomeURL` | `@Published private(set)` | Yes — security-scoped bookmark |
 | Theme | `AppSettings.appearance` | `@Published` | Yes — enum raw value |
-| Current project name / tagline / folder | `MenuBarContent` | `@State` | No (re-populated from `AppSettings` on popover open) |
-| Last result | `MenuBarContent.lastResult` | `@State` | No (cleared when a new seed runs) |
+| Hotkey enabled | `AppSettings.globalHotKeyEnabled` | `@Published` | Yes — bool |
+| Current project name / phase / result | `SeedCeremonyView` | `@State` | No (each ceremony starts fresh) |
 
-The only persistent state is in `AppSettings`. The popover re-derives everything from it on each `.onAppear`.
+The only persistent state is in `AppSettings`. The ceremony view derives nothing per open except the resting seed — there is **no** "last seed" memory anymore.
 
 ### Inter-component communication
 
 | Direction | Mechanism |
 |---|---|
-| `MenuBarContent` → `AppDelegate` (close popover after seed) | `Notification.Name.seedlingDidSeed` posted by `MenuBarContent`; observed by `AppDelegate`; calls `popover.performClose(_:)` after 3s |
+| `SeedCeremonyView` → window (dismiss after the ceremony / on Esc) | `onFinish` closure passed in by `CeremonyWindowController`, which calls `dismiss()` (fade out) |
 | `AppSettings.templatesFolderURL` change → status item icon | Combine subscription in `AppDelegate`; calls `updateStatusItemIcon()` |
 | `AppDelegate` → `SettingsView` | `appDelegate.settings` is injected as `@EnvironmentObject` in `SeedlingApp`'s `Settings { }` scene |
+| `AppDelegate` → `SeedCeremonyView` | `settings` injected as `@EnvironmentObject` via the controller's `NSHostingView` root |
 
-The `Notification.Name` is a bit much for two collaborators, but it keeps `MenuBarContent` free of `NSPopover` references. Don't replace it with direct coupling unless you're prepared to pass an `NSPopver` instance into the SwiftUI view.
+The old `.seedlingDidSeed` notification (which closed the popover) is gone — the window self-dismisses via `onFinish`.
 
 ---
 
-## 3. The popover flow
+## 3. The ceremony flow
 
-`MenuBarContent.body` branches on **`settings.mainPathURL`** (the persisted default destination, "your main path"):
+The **v3.0 Zen ceremony** replaced the menu-bar popover. The leaf left-click and ⌥⌘S both call `CeremonyWindowController.summon()`, which fades a **centered, borderless, key-accepting `NSPanel`** in on the active screen and hosts `SeedCeremonyView`. The window dismisses on outside click, on Esc, or on its own after the ceremony completes.
 
-| State | Trigger | What renders |
+`SeedCeremonyView` is a state machine over `enum Phase { onboarding, rest, growing, alive, failed }`:
+
+| Phase | Trigger | What renders |
 |---|---|---|
-| **Welcome** | `mainPathURL == nil` (first run) | `WelcomeView`: leaf → "Plant your first seed" → **Choose your path** → "…and let it grow" → ⌥⌘S hint. Choosing a folder calls `setMainPath`, plays the `.birth` animation, and reveals the seed screen. |
-| **Seed / result** | `mainPathURL != nil` | Project section + Source section + Result section (with the `.growth` animation, if seeded) + pinned action bar (Seed + folder + reset). Sized to show in **one window without scrolling** (`maxHeight: 480`). |
+| **onboarding** | `settings.projectsHomeURL == nil` (first run) | "Where do your projects grow?" + one folder pick → `setProjectsHome` → drops into `rest`. The only folder picker in the flow. |
+| **rest** | Projects home is set | A breathing seed, one centered `name your project` field (auto-focused), a live `planting in  Home/<name>` line, and a `⏎ to grow` hint. |
+| **growing** | Return (or tap the seed) with a non-empty sanitized name | `SeedGrowthView(.growth)` plays while `ProjectSeeder.seed(...)` runs the file I/O on a background queue. |
+| **alive** | growth animation **and** I/O both finished (`finalizeIfReady`) | "<name> is alive · N seeds planted · revealing…", then `NSWorkspace.open(folder)` (default file manager) and the window fades out after ~1.1s. |
+| **failed** | I/O threw | A quiet message + "Try again" (back to `rest`). |
 
-Folder choosing goes through `chooseDirectory()`, which **calls `NSApp.activate(ignoringOtherApps:)` before `NSOpenPanel.runModal()`** — see §6 (accessory-app gotchas) for why. `restoreLastSeed()` fires once per popover open, pre-filling `folderURL` from `mainPathURL` first (then `lastFolderURL`), plus `lastProjectName` / `lastTagline`. `resetForm()` re-pins to the main path rather than clearing to nil.
+The destination model is **"Projects home"**: the typed name births `ProjectsHome/<name>` and fills `{{PROJECT_NAME}}`. There is no tagline field (`{{TAGLINE}}` expands to empty). An empty name gives a gentle shake (`ShakeEffect`), never an error. A name that collides with an existing folder seeds into it without overwriting (the engine's safety property) — the alive subline notes "already there".
 
 ### The seed-growth animation (`SeedGrowthView`)
 
-Pure SwiftUI line art (no assets). Two `Shape`s (a filled seed dot + a stroked stem/leaves) are driven by a single animatable `progress`, so SwiftUI calls `path(in:)` at each interpolated step and the segment-by-segment drawing is frame-exact (a plain `.trim` can't stagger like this). Modes: `.birth` (welcome beat, on first folder choice) and `.growth` (every successful seed). Takes a `size:` param (120 default; 64 inline in the result so it fits without scrolling). Honors `accessibilityReduceMotion` by snapping to the final frame. Microinteractions (`Theme/Microinteractions.swift`): a focus-underline that draws under a focused text field; rows fade-rise on appear; buttons "give" on press (in the glass button styles).
+Pure SwiftUI line art (no assets). Two `Shape`s (a filled seed dot + a stroked stem/leaves) are driven by a single animatable `progress`, so SwiftUI calls `path(in:)` at each interpolated step and the segment-by-segment drawing is frame-exact (a plain `.trim` can't stagger like this). Modes: `.birth` and `.growth`. The `.growth` mode **completes with a soft bloom of light** — a luminous circle gated on `bloomStarted` that swells and dissolves (one breath). Takes a `size:` param (120 in the ceremony). Honors `accessibilityReduceMotion` by snapping to the final frame (no bloom). Microinteractions (`Theme/Microinteractions.swift`): a focus-underline that draws under the focused name field.
 
-### Where the Seed action actually lives
+### Where the seed action actually lives
 
-`MenuBarContent.seed()` is the entry point. It:
+`SeedCeremonyView.attemptGrow()` is the entry point. It:
 
-1. Validates `folderURL` is non-nil.
-2. Snapshots `filesToSeed` (templates folder or built-in defaults).
-3. Dispatches to a global `DispatchQueue` (file I/O on the background).
-4. Calls `Seedling.seed(_:into:options:)` and posts `.seedlingDidSeed` on success.
-5. Calls `AppSettings.recordSeed(...)` so the next popover open pre-fills.
-6. Posts an `AccessibilityNotification.Announcement` with the result headline.
+1. Sanitizes the name (`ProjectSeeder.sanitize`); empty → shake, no seed.
+2. Snapshots `settings.resolveSeedFiles()` (seed library folder or built-in defaults).
+3. Wraps security-scoped access to `projectsHomeURL` and dispatches to a global `DispatchQueue`.
+4. Calls `ProjectSeeder.seed(projectName:into:files:)` (creates the subfolder + seeds, never overwriting).
+5. Stores the result; `finalizeIfReady()` advances to `alive` once both I/O and the growth animation are done, posts an `AccessibilityNotification.Announcement`, reveals the folder, and asks the window to dismiss.
 
-The `AppDelegate` listens for `.seedlingDidSeed` and closes the popover 3s later — long enough for the user to read the result and click a file row to reveal in Finder.
+The headless **Finder Service** path (`AppDelegate.performHeadlessSeed`) still seeds an existing folder in place and confirms with the `SeedHUD` panel; it also reveals via `NSWorkspace.open(folder)`.
 
 ---
 
@@ -175,13 +183,12 @@ What this means in practice:
 - Before reading or writing a bookmarked URL, call `url.startAccessingSecurityScopedResource()`; after, call `url.stopAccessingSecurityScopedResource()`.
 - The **Finder Service** path is special: when the user invokes "Seed this folder", macOS hands us a temporary sandbox extension for *that* folder, so `performHeadlessSeed` can write without the folder being pre-bookmarked.
 
-`AppSettings` persists **three** security-scoped bookmarks, each with the same shape (a key constant, a resolve-on-init branch, and a setter that wraps start/stop access):
+`AppSettings` persists **two** security-scoped bookmarks, both now routed through the `BookmarkedFolder` helper (`Models/BookmarkedFolder.swift` — `resolve()` / `store(_:)` / `clear()`):
 
-- `mainPathURL` ← `mainPathBookmarkKey`, set by `setMainPath(_:)` — the default destination ("your main path").
-- `templatesFolderURL` ← `templatesBookmarkKey`, set by `setTemplatesFolder(from:)`.
-- `lastFolderURL` ← `lastFolderBookmarkKey`, set by `recordSeed(folder:projectName:tagline:)`.
+- `projectsHomeURL` ← `projectsHomeBookmarkKey`, set by `setProjectsHome(_:)` — where new projects are born.
+- `templatesFolderURL` ← `templatesBookmarkKey`, set by `setTemplatesFolder(from:)` (persisted via the `didSet` → `persistTemplatesBookmark()`).
 
-`TemplateLoader.load(from:)` requires the caller to wrap it in start/stop. The popover does this in `filesToSeed`:
+`TemplateLoader.load(from:)` requires the caller to wrap it in start/stop. `AppSettings.resolveSeedFiles()` does this:
 
 ```swift
 let started = settings.beginTemplatesAccess()
@@ -191,7 +198,7 @@ let loaded = TemplateLoader.load(from: url)
 
 `AppSettings.beginTemplatesAccess() / endTemplatesAccess()` are thin wrappers that return a `Bool` indicating whether access was granted, so the caller can skip `endAccess` if the start failed.
 
-**Gotcha:** there are now three near-identical bookmark blocks (the original docs predicted this would be the moment to generalize). It's still deliberately explicit — three short, debuggable copies beat one clever abstraction. If you add a *fourth*, that's the time to extract a small `BookmarkedFolder` helper.
+**History:** earlier versions had three hand-copied bookmark blocks. v3.0 hit the predicted "fourth bookmark" threshold and extracted `BookmarkedFolder`; the two remaining bookmarks both go through it. New folder bookmarks should use `BookmarkedFolder`, not a fresh hand-rolled copy.
 
 ---
 
@@ -221,7 +228,7 @@ button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     if event?.type == .rightMouseUp {
         showContextMenu()
     } else {
-        togglePopover()
+        ceremony.toggle()   // summon / dismiss the centered ceremony window
     }
 }
 ```
@@ -238,20 +245,21 @@ statusItem.menu = nil
 
 The menu is set on the `statusItem` *temporarily*, then the button is clicked, then the menu is removed. This makes the right-click menu appear *under* the cursor at the right time. Without this dance, the menu can appear at the wrong location or not appear at all.
 
-### Popover transient + global event monitor
+### Ceremony window dismissal (global event monitor)
+
+The ceremony window is a borderless `NSPanel`, so it has no built-in transient behavior. `CeremonyWindowController` installs a global mouse-down monitor while the panel is shown and dismisses on any outside click:
 
 ```swift
-popover.behavior = .transient  // dismisses on outside click
-eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { ... }
+outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+    self?.dismiss()
+}
 ```
 
-`.transient` is supposed to dismiss on outside click, but in practice the global event monitor is more reliable — it works even when the click target is in another app. Belt + suspenders.
-
-`addGlobalMonitorForEvents` requires an accessibility permission for the *caller*, but a sandboxed app calling it for its own popover doesn't need that — the system has implicit permission for the app's own UI. **Don't** add a global event monitor for *other apps'* windows; that does require accessibility.
+The monitor is removed in `dismiss()` (not leaked across summons). `addGlobalMonitorForEvents` requires an accessibility permission for the *caller*, but a sandboxed app calling it for its own UI doesn't need that — the system has implicit permission. **Don't** add a global event monitor for *other apps'* windows; that does require accessibility. Esc is handled separately via `.onExitCommand` inside `SeedCeremonyView`.
 
 ### Global summon hotkey (⌥⌘S)
 
-`GlobalHotKey` wraps Carbon's `RegisterEventHotKey` — the **sandbox-safe** way to register a system-wide hotkey with **no Accessibility / Input-Monitoring prompt** (a global `NSEvent` keyDown monitor would require Input Monitoring and a permission prompt, which fights the "invisible" goal). `AppDelegate.refreshHotKey()` registers/unregisters it based on `settings.globalHotKeyEnabled` (Combine-subscribed, like the icon). The handler is `summonPopover()`: it **must** `NSApp.activate(ignoringOtherApps:)` before `togglePopover()`, or the popover won't take keyboard focus when another app is frontmost. The combo is fixed (`kVK_ANSI_S` + `cmdKey|optionKey`); there's a Settings toggle but no recorder.
+`GlobalHotKey` wraps Carbon's `RegisterEventHotKey` — the **sandbox-safe** way to register a system-wide hotkey with **no Accessibility / Input-Monitoring prompt** (a global `NSEvent` keyDown monitor would require Input Monitoring and a permission prompt, which fights the "invisible" goal). `AppDelegate.refreshHotKey()` registers/unregisters it based on `settings.globalHotKeyEnabled` (Combine-subscribed, like the icon). The handler is `ceremony.summon()`, which **must** `NSApp.activate(ignoringOtherApps:)` before showing the panel (it does), or the window won't take keyboard focus when another app is frontmost — and the `KeyablePanel` subclass overrides `canBecomeKey` so the borderless panel can focus the name field at all. The combo is fixed (`kVK_ANSI_S` + `cmdKey|optionKey`); there's a Settings toggle but no recorder.
 
 ### Finder Service ("Seed this folder")
 
@@ -263,7 +271,7 @@ Declared in `Info.plist` under `NSServices` (`NSMessage = seedFolderFromService`
 
 This is an `LSUIElement` (`.accessory`) app — no Dock icon, rarely "frontmost". Two consequences cost real debugging time:
 
-1. **`NSOpenPanel.runModal()` opens *behind* everything** unless you `NSApp.activate(ignoringOtherApps:)` first. Symptom: clicking a "choose folder" button does nothing visible ("stuck"). Always go through `MenuBarContent.chooseDirectory()` / `SettingsView.chooseDirectory()`, which activate first and set `panel.level = .modalPanel`.
+1. **`NSOpenPanel.runModal()` opens *behind* everything** unless you `NSApp.activate(ignoringOtherApps:)` first. Symptom: clicking a "choose folder" button does nothing visible ("stuck"). Always go through `SeedCeremonyView.chooseProjectsHome()` / `SettingsView.chooseDirectory()`, which activate first and set `panel.level = .modalPanel`.
 2. **The SwiftUI `Settings` scene won't surface** while the app is `.accessory`. `openSettings()` switches to `.regular`, activates, then sends `showSettingsWindow:`; `handleWindowClose(_:)` drops back to `.accessory` when the last titled window closes (so the Dock icon only appears while Settings/About is open). Don't "simplify" this back to a bare `sendAction` — it won't open.
 
 ---
@@ -362,8 +370,8 @@ Should be empty.
 
 1. Open `Engine/Seedling.swift`.
 2. In `render(_:options:)`, add a `replacingOccurrences(of: "{{KEY}}", with: options.field)`.
-3. Add a `var field: String` to `ProjectOptions` in `Models/SeedFile.swift`.
-4. Add a `TextField` in `MenuBarContent.projectBlock` that binds to a new `@State` and passes it into the `seed(...)` call.
+3. Add a `var field: String` to `ProjectOptions` in `Models/SeedFile.swift` and pass it through `ProjectSeeder.seed(...)`.
+4. Note: the ceremony is deliberately **name-only** (zen). Surfacing a new input in `SeedCeremonyView` fights that design — prefer deriving the value (like `{{PROJECT_NAME}}` from the typed name) over adding a field.
 
 ### "Add a new menu-bar right-click item"
 
@@ -385,7 +393,7 @@ Search for `3.0` in `App/AppDelegate.swift`. The single match is the `DispatchQu
 
 ### "Reset the first-run experience"
 
-First run is gated by `mainPathURL == nil` (the `WelcomeView`). To see the welcome flow again, clear all persisted state:
+First run is gated by `projectsHomeURL == nil` (the onboarding phase in `SeedCeremonyView`). To see the onboarding flow again, clear all persisted state:
 
 ```bash
 defaults delete com.seedling.app
@@ -452,8 +460,8 @@ If you ever change one of these, re-read the relevant HIG reference (`accessibil
 ## 13. Things that look fragile but aren't
 
 - **`@MainActor` on `AppDelegate` and `AppSettings`.** They need it. Don't drop it.
-- **`popover.contentViewController?.view.window?.makeKey()` after `show(...)`.** This is what makes the popover accept keyboard input. Without it, `⌘O` and `⌘↩` don't fire.
-- **`@Published private(set) var lastFolderURL: URL?`.** Marked private(set) because the public API for setting it is `recordSeed(...)` — which wraps the bookmark logic. Don't expose a public setter.
+- **`KeyablePanel` overriding `canBecomeKey`/`canBecomeMain` to return `true`.** A borderless `NSPanel` can't become key by default, so the name field couldn't take keyboard focus. This override is what lets the user type immediately. Don't drop it.
+- **`@Published private(set) var projectsHomeURL: URL?`.** Marked private(set) because the public API for setting it is `setProjectsHome(_:)` — which wraps the bookmark logic via `BookmarkedFolder`. Don't expose a public setter.
 - **The Combine subscription in `applicationDidFinishLaunching`.** It looks like it should live somewhere else, but `applicationDidFinishLaunching` is the only place where the `AppDelegate` is guaranteed to be alive and the `AppSettings` is guaranteed to be initialized.
 - **`NotificationCenter.default.addObserver(self, selector:...)` instead of `for: ... .receive(on:...)`.** Targets must be `@objc` for selector-based observation, and `AppDelegate` is already `@objc` (it's `NSObject`). This is the right tool for an `@objc` target.
 
