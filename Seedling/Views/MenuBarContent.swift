@@ -421,28 +421,6 @@ struct MenuBarContent: View {
     }
 }
 
-// MARK: - SeedResult formatting
-
-extension SeedResult {
-    var headline: String {
-        let c = created.count
-        if c == 0 && skipped.isEmpty { return "No files written" }
-        if c == 0 { return "Nothing to do" }
-        return c == 1 ? "Seeded 1 file" : "Seeded \(c) files"
-    }
-
-    var subline: String {
-        if !skipped.isEmpty {
-            return "\(skipped.count) skipped (already exist) · \(folderURL.lastPathComponent)"
-        }
-        return folderURL.lastPathComponent
-    }
-
-    var isAllCreated: Bool {
-        !created.isEmpty && skipped.isEmpty
-    }
-}
-
 #Preview {
     MenuBarContent()
         .environmentObject(AppSettings())

@@ -92,3 +92,29 @@ struct Seedling {
         return SeedResult(created: created, skipped: skipped, folderURL: folder)
     }
 }
+
+// MARK: - SeedResult formatting
+
+extension SeedResult {
+    /// Short headline, e.g. "Seeded 5 files" / "Nothing to do".
+    var headline: String {
+        let c = created.count
+        if c == 0 && skipped.isEmpty { return "No files written" }
+        if c == 0 { return "Nothing to do" }
+        return c == 1 ? "Seeded 1 file" : "Seeded \(c) files"
+    }
+
+    var subline: String {
+        if !skipped.isEmpty {
+            return "\(skipped.count) skipped (already exist) · \(folderURL.lastPathComponent)"
+        }
+        return folderURL.lastPathComponent
+    }
+
+    var isAllCreated: Bool {
+        !created.isEmpty && skipped.isEmpty
+    }
+
+    /// Count of seeds actually planted (created this run).
+    var plantedCount: Int { created.count }
+}
