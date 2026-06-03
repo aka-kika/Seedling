@@ -7,8 +7,8 @@
 //
 //  Architecture:
 //  - The `AppDelegate` owns an `NSStatusItem`.
-//  - Left-click on the leaf icon → SwiftUI popover (seed workflow).
-//  - Right-click on the leaf icon → NSMenu (About / Settings / Theme / Quit).
+//  - Left-click on the leaf icon / ⌥⌘S → centered ceremony window (CeremonyWindowController).
+//  - Right-click on the leaf icon → NSMenu (About / Settings / Quit).
 //  - Settings opens the standard SwiftUI `Settings` scene.
 //  - `Commands` adds the standard App menu (About / Settings / Quit) so the
 //    app behaves correctly when activated (e.g. focus moves to Settings).

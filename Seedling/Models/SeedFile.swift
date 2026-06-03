@@ -332,11 +332,7 @@ final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
     private let templatesBookmarkKey = "seedling.templatesFolderBookmark"
     private let appearanceKey = "seedling.appearance"
-    private let lastFolderBookmarkKey = "seedling.lastFolderBookmark"
-    private let lastProjectNameKey = "seedling.lastProjectName"
-    private let lastTaglineKey = "seedling.lastTagline"
     private let globalHotKeyEnabledKey = "seedling.globalHotKeyEnabled"
-    private let mainPathBookmarkKey = "seedling.mainPathBookmark"
     private let projectsHomeBookmarkKey = "seedling.projectsHomeBookmark"
 
     @Published var templatesFolderURL: URL? {
@@ -348,20 +344,9 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(globalHotKeyEnabled, forKey: globalHotKeyEnabledKey) }
     }
 
-    /// Most recently seeded destination folder, with security-scoped bookmark.
-    /// Re-opens the popover with this folder pre-selected so re-seeding is one click.
-    @Published private(set) var lastFolderURL: URL?
-
-    /// The user's default destination — "your main path." Set once on first run,
-    /// editable in Settings. Persisted as a security-scoped bookmark.
-    @Published private(set) var mainPathURL: URL?
-
     /// Where new projects are born. Set once (first run / Settings); each seed
     /// creates `projectsHome/<name>`. Persisted as a security-scoped bookmark.
     @Published private(set) var projectsHomeURL: URL?
-
-    @Published private(set) var lastProjectName: String = ""
-    @Published private(set) var lastTagline: String = ""
 
     @Published var appearance: Appearance {
         didSet { defaults.set(appearance.rawValue, forKey: appearanceKey) }
@@ -416,30 +401,6 @@ final class AppSettings: ObservableObject {
             }
         }
 
-        if let data = defaults.data(forKey: lastFolderBookmarkKey) {
-            var stale = false
-            if let url = try? URL(
-                resolvingBookmarkData: data,
-                options: [.withSecurityScope],
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-            ) {
-                self.lastFolderURL = url
-            }
-        }
-
-        if let data = defaults.data(forKey: mainPathBookmarkKey) {
-            var stale = false
-            if let url = try? URL(
-                resolvingBookmarkData: data,
-                options: [.withSecurityScope],
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-            ) {
-                self.mainPathURL = url
-            }
-        }
-
         if let data = defaults.data(forKey: projectsHomeBookmarkKey) {
             var stale = false
             if let url = try? URL(
@@ -450,42 +411,6 @@ final class AppSettings: ObservableObject {
             ) {
                 self.projectsHomeURL = url
             }
-        }
-
-        self.lastProjectName = defaults.string(forKey: lastProjectNameKey) ?? ""
-        self.lastTagline = defaults.string(forKey: lastTaglineKey) ?? ""
-    }
-
-    /// Record the destination folder / name / tagline from a successful seed.
-    /// Stores a security-scoped bookmark so the folder can be re-accessed next launch.
-    func recordSeed(folder: URL, projectName: String, tagline: String) {
-        let didStart = folder.startAccessingSecurityScopedResource()
-        defer { if didStart { folder.stopAccessingSecurityScopedResource() } }
-
-        lastFolderURL = folder
-        lastProjectName = projectName
-        lastTagline = tagline
-
-        if let data = try? folder.bookmarkData(
-            options: [.withSecurityScope],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        ) {
-            defaults.set(data, forKey: lastFolderBookmarkKey)
-        }
-        defaults.set(projectName, forKey: lastProjectNameKey)
-        defaults.set(tagline, forKey: lastTaglineKey)
-    }
-
-    /// Set (or change) the main path. Stores a security-scoped bookmark.
-    func setMainPath(_ url: URL) {
-        let didStart = url.startAccessingSecurityScopedResource()
-        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
-        mainPathURL = url
-        if let data = try? url.bookmarkData(
-            options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil
-        ) {
-            defaults.set(data, forKey: mainPathBookmarkKey)
         }
     }
 

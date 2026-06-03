@@ -138,11 +138,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 if didStart { folder.stopAccessingSecurityScopedResource() }
                 guard let result else { return }
-                self.settings.recordSeed(
-                    folder: folder,
-                    projectName: folder.lastPathComponent,
-                    tagline: ""
-                )
                 let (theme, scheme) = self.currentThemeForHUD()
                 SeedHUD.present(
                     message: "\(result.headline) · \(folder.lastPathComponent)",
