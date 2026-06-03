@@ -29,6 +29,8 @@ struct SeedGrowthView: View {
     @Environment(\.kikaTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 0
+    @State private var bloom = false
+    @State private var bloomStarted = false
 
     private var duration: Double { mode == .birth ? 1.2 : 1.4 }
 
@@ -43,6 +45,20 @@ struct SeedGrowthView: View {
                 )
         }
         .frame(width: size, height: size)
+        .overlay(alignment: .top) {
+            // One breath of light as the growth completes (growth mode only).
+            if mode == .growth && bloomStarted {
+                Circle()
+                    .fill(theme.accent)
+                    .frame(width: size * 0.18, height: size * 0.18)
+                    .blur(radius: size * 0.04)
+                    .scaleEffect(bloom ? 1.7 : 0.3)
+                    .opacity(bloom ? 0.0 : 0.7)
+                    .padding(.top, size * 0.12)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
         .onAppear {
             if reduceMotion {
                 progress = 1
@@ -50,6 +66,13 @@ struct SeedGrowthView: View {
                 return
             }
             withAnimation(.easeInOut(duration: duration)) { progress = 1 }
+            if mode == .growth {
+                // Near the end of the draw, reveal the petal and let it swell + dissolve.
+                DispatchQueue.main.asyncAfter(deadline: .now() + duration * 0.82) {
+                    bloomStarted = true
+                    withAnimation(.easeOut(duration: 0.55)) { bloom = true }
+                }
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { onComplete?() }
         }
     }
