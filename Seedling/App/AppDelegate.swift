@@ -173,12 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        // About
-        let about = NSMenuItem(title: "About Seedling", action: #selector(showAbout), keyEquivalent: "")
-        about.target = self
-        menu.addItem(about)
-
-        // Settings…
+        // Settings… (About now lives in a Settings tab)
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -196,11 +191,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Menu actions
-
-    @objc private func showAbout() {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.orderFrontStandardAboutPanel(nil)
-    }
 
     /// Open the settings window. We manage our own NSWindow (SettingsWindowController)
     /// because the SwiftUI `Settings` scene opener (`showSettingsWindow:`) is
