@@ -100,7 +100,10 @@ final class CeremonyWindowController {
 
     private func installOutsideClickMonitor() {
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            // Any click outside our app (the panel is the only window) dismisses.
+            // Ignore clicks while a folder picker is up. A sandboxed NSOpenPanel
+            // runs out-of-process, so its clicks arrive here as "other app"
+            // events and would otherwise dismiss the ceremony mid-onboarding.
+            guard NSApp.modalWindow == nil else { return }
             self?.dismiss()
         }
     }

@@ -69,27 +69,38 @@ struct SeedCeremonyView: View {
     private var onboarding: some View {
         VStack(spacing: KikaSpacing.md) {
             staticSeed
-            if onboardStep == .seeds {
-                Text("where are your seeds?")
-                    .font(KikaFont.title)
-                    .foregroundStyle(theme.textPrimary)
-                Text("the folder with your .md files — your Root")
-                    .font(KikaFont.caption)
-                    .foregroundStyle(theme.textTertiary)
-                    .multilineTextAlignment(.center)
-                Button("Choose…") { chooseSeedsRoot() }
-                    .buttonStyle(KikaPrimaryButtonStyle())
-            } else {
-                Text("take me to your garden…")
-                    .font(KikaFont.title)
-                    .foregroundStyle(theme.textPrimary)
-                Text("where new projects grow")
-                    .font(KikaFont.caption)
-                    .foregroundStyle(theme.textTertiary)
-                    .multilineTextAlignment(.center)
-                Button("Choose…") { chooseGarden() }
-                    .buttonStyle(KikaPrimaryButtonStyle())
+                .scaleEffect(seedPump)
+            Group {
+                if onboardStep == .seeds {
+                    onboardBeat(title: "where are your seeds?",
+                                subtitle: "the folder with your .md files — your Root",
+                                choose: chooseSeedsRoot)
+                } else {
+                    onboardBeat(title: "take me to your garden…",
+                                subtitle: "where new projects grow",
+                                choose: chooseGarden)
+                }
             }
+            .id(onboardStep)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .offset(x: 16)),
+                removal: .opacity.combined(with: .offset(x: -16))
+            ))
+        }
+        .animation(.easeInOut(duration: 0.35), value: onboardStep)
+    }
+
+    private func onboardBeat(title: String, subtitle: String, choose: @escaping () -> Void) -> some View {
+        VStack(spacing: KikaSpacing.md) {
+            Text(title)
+                .font(KikaFont.title)
+                .foregroundStyle(theme.textPrimary)
+            Text(subtitle)
+                .font(KikaFont.caption)
+                .foregroundStyle(theme.textTertiary)
+                .multilineTextAlignment(.center)
+            Button("Choose…", action: choose)
+                .buttonStyle(KikaPrimaryButtonStyle())
         }
     }
 
@@ -210,12 +221,25 @@ struct SeedCeremonyView: View {
         }
     }
 
-    /// A quick scale bump on the resting seed for each character typed.
+    /// A scale bump on the resting seed for each character typed. The first
+    /// letter is a modest pump; it grows with the name so the seed gets visibly
+    /// more eager as the word forms.
     private func pumpSeed() {
         guard !reduceMotion else { return }
-        withAnimation(.easeOut(duration: 0.10)) { seedPump = 1.28 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
-            withAnimation(.spring(response: 0.26, dampingFraction: 0.5)) { seedPump = 1.0 }
+        let count = ProjectSeeder.sanitize(name).count
+        let intensity = min(0.55, 0.30 + CGFloat(max(0, count - 1)) * 0.03)
+        withAnimation(.easeOut(duration: 0.09)) { seedPump = 1 + intensity }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.45)) { seedPump = 1.0 }
+        }
+    }
+
+    /// A one-off pulse (used when advancing an onboarding step).
+    private func pulse() {
+        guard !reduceMotion else { return }
+        withAnimation(.easeOut(duration: 0.12)) { seedPump = 1.4 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.5)) { seedPump = 1.0 }
         }
     }
 
@@ -234,6 +258,7 @@ struct SeedCeremonyView: View {
     private func chooseSeedsRoot() {
         if let url = choosePanel() {
             settings.setTemplatesFolder(from: url)
+            pulse()                 // the seed reacts as the garden beat slides in
             onboardStep = .garden
         }
     }
