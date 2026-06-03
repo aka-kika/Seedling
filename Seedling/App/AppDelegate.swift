@@ -5,26 +5,24 @@ import Combine
 // MARK: - AppDelegate
 //
 // Owns the NSStatusItem that lives in the menu bar.
-// - Left-click: toggles the SwiftUI popover (the seed workflow)
-// - Right-click: shows an NSMenu with About / Settings / Theme submenu / Quit
+// - Left-click / ⌥⌘S: summons the centered ceremony window (the seed workflow)
+// - Right-click: shows an NSMenu with About / Settings / Quit
 //
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let popover = NSPopover()
 
     /// Strong reference to the settings object (also injected into SwiftUI scenes).
     let settings = AppSettings()
 
-    private var eventMonitor: Any?
+    /// The centered ceremony window (replaces the old menu-bar popover).
+    private lazy var ceremony = CeremonyWindowController(settings: settings)
 
     /// System-wide ⌥⌘S summon hotkey (Carbon-backed, no Accessibility prompt).
     private let hotKey = GlobalHotKey()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureStatusItem()
-        configurePopover()
-        installOutsideClickMonitor()
         updateStatusItemIcon()
 
         // Register Seedling as a Services provider so Finder shows
@@ -32,12 +30,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleSeedDidComplete),
-            name: .seedlingDidSeed,
-            object: nil
-        )
         // Return to menu-bar-only (no Dock icon) once Settings/About closes.
         NotificationCenter.default.addObserver(
             self,
@@ -60,14 +52,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private var cancellables = Set<AnyCancellable>()
 
-    @objc private func handleSeedDidComplete() {
-        // Close the popover after a longer delay so the user has time to read
-        // the result, scan the file list, or click a file to reveal it.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            self?.popover.performClose(nil)
-        }
-    }
-
     // MARK: - Status item
 
     private func configureStatusItem() {
@@ -89,36 +73,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         button.image = image
     }
 
-    // MARK: - Popover
-
-    private func configurePopover() {
-        popover.behavior = .transient
-        popover.delegate = self
-        popover.contentSize = NSSize(width: 340, height: 380)
-        popover.contentViewController = NSHostingController(
-            rootView: MenuBarContent()
-                .environmentObject(settings)
-        )
-    }
-
-    // MARK: - Outside click monitor
-    // Ensures the popover dismisses when the user clicks anywhere outside it
-    // (the transient behavior is close-but-not-quite — this is belt + suspenders).
-    private func installOutsideClickMonitor() {
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self else { return }
-            if self.popover.isShown {
-                self.popover.performClose(nil)
-            }
-        }
-    }
-
-    deinit {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-    }
-
     // MARK: - Button handler
 
     @objc private func handleButtonPress(_ sender: NSStatusBarButton) {
@@ -126,17 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if event?.type == .rightMouseUp {
             showContextMenu()
         } else {
-            togglePopover()
-        }
-    }
-
-    private func togglePopover() {
-        guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            ceremony.toggle()
         }
     }
 
@@ -144,17 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func refreshHotKey() {
         if settings.globalHotKeyEnabled {
-            hotKey.register { [weak self] in self?.summonPopover() }
+            hotKey.register { [weak self] in self?.ceremony.summon() }
         } else {
             hotKey.unregister()
         }
-    }
-
-    /// Bring Seedling forward (so the popover can take keyboard focus even when
-    /// another app is frontmost) and toggle the popover.
-    private func summonPopover() {
-        NSApp.activate(ignoringOtherApps: true)
-        togglePopover()
     }
 
     // MARK: - Finder Service ("Seed this folder")
@@ -213,9 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                     colorScheme: scheme
                 )
                 AccessibilityNotification.Announcement(result.headline).post()
-                if !result.created.isEmpty {
-                    NSWorkspace.shared.activateFileViewerSelecting(result.created)
-                }
+                NSWorkspace.shared.open(folder)   // default file manager, not hard-coded Finder
             }
         }
     }
