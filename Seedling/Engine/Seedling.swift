@@ -6,6 +6,7 @@ enum SeedError: LocalizedError {
     case noFolderSelected
     case folderNotWritable
     case writeFailed(URL, underlying: Error)
+    case emptyProjectName
 
     var errorDescription: String? {
         switch self {
@@ -15,6 +16,8 @@ enum SeedError: LocalizedError {
             return "The selected folder is not writable."
         case .writeFailed(let url, let underlying):
             return "Couldn't write \(url.lastPathComponent): \(underlying.localizedDescription)"
+        case .emptyProjectName:
+            return "Type a project name first."
         }
     }
 }

@@ -36,6 +36,7 @@ enum SeedError: Error, LocalizedError {
     case noFolderSelected
     case folderNotWritable
     case writeFailed(URL, underlying: Error)
+    case emptyProjectName
 
     var errorDescription: String? {
         switch self {
@@ -45,6 +46,8 @@ enum SeedError: Error, LocalizedError {
             return "The selected folder is not writable."
         case .writeFailed(let url, let underlying):
             return "Couldn't write \(url.lastPathComponent): \(underlying.localizedDescription)"
+        case .emptyProjectName:
+            return "Type a project name first."
         }
     }
 }
@@ -86,6 +89,27 @@ enum Seedling {
             }
         }
         return SeedResult(created: created, skipped: skipped, folderURL: folder)
+    }
+}
+
+enum ProjectSeeder {
+    static func sanitize(_ raw: String) -> String {
+        var s = raw.components(separatedBy: CharacterSet(charactersIn: "/\\:")).joined(separator: "-")
+        s = s.components(separatedBy: .controlCharacters).joined()
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        while s.hasPrefix(".") { s.removeFirst() }
+        s = s.split(whereSeparator: { $0 == " " || $0 == "\t" }).joined(separator: " ")
+        return s
+    }
+
+    static func seed(projectName raw: String, into home: URL, files: [SeedFile]) throws -> (result: SeedResult, folder: URL) {
+        let name = sanitize(raw)
+        guard !name.isEmpty else { throw SeedError.emptyProjectName }
+        let folder = home.appendingPathComponent(name, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let options = ProjectOptions(folderURL: folder, projectName: name, tagline: "")
+        let result = try Seedling.seed(files, into: folder, options: options)
+        return (result, folder)
     }
 }
 
@@ -147,6 +171,32 @@ do {
     precondition(false, "should have thrown")
 } catch SeedError.noFolderSelected {
     print("✓ Invalid folder throws SeedError.noFolderSelected")
+}
+
+// 7. Name sanitization
+precondition(ProjectSeeder.sanitize("aurora") == "aurora", "plain name unchanged")
+precondition(ProjectSeeder.sanitize("  spaced out  ") == "spaced out", "trims + collapses whitespace")
+precondition(ProjectSeeder.sanitize("a/b:c") == "a-b-c", "path separators become hyphens")
+precondition(ProjectSeeder.sanitize("...dotfile") == "dotfile", "strips leading dots")
+precondition(ProjectSeeder.sanitize("   ") == "", "whitespace-only becomes empty")
+print("✓ Project name sanitization")
+
+// 8. Birth a subfolder and seed it
+let home = tmp.appendingPathComponent("home-\(UUID().uuidString)")
+try fm.createDirectory(at: home, withIntermediateDirectories: true)
+let born = try ProjectSeeder.seed(projectName: "aurora", into: home, files: defaults)
+precondition(born.folder.lastPathComponent == "aurora", "subfolder named after the project")
+precondition(born.result.created.count == 5, "all 5 seeds planted into the new folder")
+let reborn = try ProjectSeeder.seed(projectName: "aurora", into: home, files: defaults)
+precondition(reborn.result.created.isEmpty && reborn.result.skipped.count == 5, "re-seed never overwrites")
+print("✓ ProjectSeeder births a folder and seeds it (never overwrites)")
+
+// 9. Empty name is rejected
+do {
+    _ = try ProjectSeeder.seed(projectName: "   ", into: home, files: defaults)
+    precondition(false, "should have thrown")
+} catch SeedError.emptyProjectName {
+    print("✓ Empty project name throws SeedError.emptyProjectName")
 }
 
 print("\nAll smoke tests passed ✅")
