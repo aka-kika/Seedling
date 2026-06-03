@@ -1,20 +1,26 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Settings window (tabbed)
+// MARK: - Settings window (tabbed via a sage segmented control)
 
 struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var settings: AppSettings
 
+    private enum Tab: String, CaseIterable, Identifiable {
+        case gardening = "Gardening"
+        case keyboard  = "Keyboard"
+        case about     = "About"
+        var id: String { rawValue }
+    }
+    @State private var tab: Tab = .gardening
+
     private var templatesPath: String {
         settings.templatesFolderURL?.path ?? "Built-in library"
     }
-
     private var isCustomTemplates: Bool {
         settings.templatesFolderURL != nil
     }
-
     private var gardenPath: String {
         settings.projectsHomeURL?.path ?? "Not set"
     }
@@ -22,22 +28,28 @@ struct SettingsView: View {
     var body: some View {
         let theme = KikaTheme.resolve(scheme: colorScheme)
 
-        TabView {
-            gardeningTab(theme: theme)
-                .tabItem { Label("Gardening", systemImage: "leaf") }
-            keyboardTab(theme: theme)
-                .tabItem { Label("Keyboard", systemImage: "command") }
-            aboutTab(theme: theme)
-                .tabItem { Label("About", systemImage: "info.circle") }
+        VStack(spacing: KikaSpacing.md) {
+            Picker("", selection: $tab) {
+                ForEach(Tab.allCases) { t in Text(t.rawValue).tag(t) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 300)
+            .padding(.top, 16)
+
+            switch tab {
+            case .gardening: gardeningTab(theme: theme)
+            case .keyboard:  keyboardTab(theme: theme)
+            case .about:     aboutTab(theme: theme)
+            }
         }
-        .tint(theme.accent)               // sage selection/controls, not the system accent
-        .padding(.top, 14)                // breathing room below the title bar
-        .frame(width: 440, height: 424)
+        .frame(width: 440)          // width fixed; height hugs each tab's content
+        .tint(theme.accent)         // sage selection everywhere, not the system accent
         .environment(\.kikaTheme, theme)
         .preferredColorScheme(settings.appearance.colorScheme)
     }
 
-    // MARK: - Gardening tab (Root + Garden + Theme)
+    // MARK: - Gardening tab (Root + Garden + theme)
 
     private func gardeningTab(theme: KikaTheme) -> some View {
         VStack(spacing: KikaSpacing.md) {
@@ -75,15 +87,11 @@ struct SettingsView: View {
             )
 
             HStack {
-                Text("Theme")
-                    .font(KikaFont.body)
-                    .foregroundStyle(theme.textPrimary)
                 Spacer()
                 themePicker
+                Spacer()
             }
             .frame(minHeight: 28)
-
-            Spacer(minLength: 0)
         }
         .padding(KikaSpacing.lg)
     }
@@ -97,7 +105,7 @@ struct SettingsView: View {
             }
         }
         .pickerStyle(.segmented)
-        .frame(maxWidth: 140)
+        .frame(maxWidth: 150)
         .labelsHidden()
         .accessibilityLabel("Theme")
     }
@@ -134,8 +142,6 @@ struct SettingsView: View {
                 .foregroundStyle(theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, KikaSpacing.sm)
-
-            Spacer(minLength: 0)
         }
         .padding(KikaSpacing.lg)
     }
@@ -144,7 +150,6 @@ struct SettingsView: View {
 
     private func aboutTab(theme: KikaTheme) -> some View {
         VStack(spacing: KikaSpacing.md) {
-            Spacer(minLength: 0)
             // The real app icon (falls back to the generic one until an AppIcon
             // asset is added — it then appears here automatically).
             Image(nsImage: NSApplication.shared.applicationIconImage)
@@ -152,6 +157,7 @@ struct SettingsView: View {
                 .interpolation(.high)
                 .frame(width: 88, height: 88)
                 .accessibilityHidden(true)
+                .padding(.top, KikaSpacing.sm)
 
             VStack(spacing: 4) {
                 Text("Seedling")
@@ -173,7 +179,6 @@ struct SettingsView: View {
             Text("© 2026 Seedling")
                 .font(KikaFont.caption)
                 .foregroundStyle(theme.textTertiary)
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
         .padding(KikaSpacing.lg)

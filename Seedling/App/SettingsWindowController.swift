@@ -26,6 +26,9 @@ final class SettingsWindowController {
         let hosting = NSHostingController(
             rootView: SettingsView().environmentObject(settings)
         )
+        // Let the window track the SwiftUI content size so it hugs each tab
+        // (no leftover empty space when a shorter tab is selected).
+        hosting.sizingOptions = [.preferredContentSize]
         let win = NSWindow(contentViewController: hosting)
         win.title = "Seedling Settings"
         win.styleMask = [.titled, .closable]
