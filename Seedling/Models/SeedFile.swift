@@ -337,6 +337,7 @@ final class AppSettings: ObservableObject {
     private let lastTaglineKey = "seedling.lastTagline"
     private let globalHotKeyEnabledKey = "seedling.globalHotKeyEnabled"
     private let mainPathBookmarkKey = "seedling.mainPathBookmark"
+    private let projectsHomeBookmarkKey = "seedling.projectsHomeBookmark"
 
     @Published var templatesFolderURL: URL? {
         didSet { persistTemplatesBookmark() }
@@ -354,6 +355,11 @@ final class AppSettings: ObservableObject {
     /// The user's default destination — "your main path." Set once on first run,
     /// editable in Settings. Persisted as a security-scoped bookmark.
     @Published private(set) var mainPathURL: URL?
+
+    /// Where new projects are born. Set once (first run / Settings); each seed
+    /// creates `projectsHome/<name>`. Persisted as a security-scoped bookmark.
+    @Published private(set) var projectsHomeURL: URL?
+
     @Published private(set) var lastProjectName: String = ""
     @Published private(set) var lastTagline: String = ""
 
@@ -434,6 +440,18 @@ final class AppSettings: ObservableObject {
             }
         }
 
+        if let data = defaults.data(forKey: projectsHomeBookmarkKey) {
+            var stale = false
+            if let url = try? URL(
+                resolvingBookmarkData: data,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &stale
+            ) {
+                self.projectsHomeURL = url
+            }
+        }
+
         self.lastProjectName = defaults.string(forKey: lastProjectNameKey) ?? ""
         self.lastTagline = defaults.string(forKey: lastTaglineKey) ?? ""
     }
@@ -469,6 +487,28 @@ final class AppSettings: ObservableObject {
         ) {
             defaults.set(data, forKey: mainPathBookmarkKey)
         }
+    }
+
+    /// Set (or change) the Projects home. Stores a security-scoped bookmark.
+    func setProjectsHome(_ url: URL) {
+        let didStart = url.startAccessingSecurityScopedResource()
+        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+        projectsHomeURL = url
+        if let data = try? url.bookmarkData(
+            options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil
+        ) {
+            defaults.set(data, forKey: projectsHomeBookmarkKey)
+        }
+    }
+
+    /// Begin security-scoped access for the Projects home. Caller must end it.
+    func beginProjectsHomeAccess() -> Bool {
+        guard let url = projectsHomeURL else { return false }
+        return url.startAccessingSecurityScopedResource()
+    }
+
+    func endProjectsHomeAccess() {
+        projectsHomeURL?.stopAccessingSecurityScopedResource()
     }
 
     /// Pick a templates folder. Stores a security-scoped bookmark for sandboxed re-access.
