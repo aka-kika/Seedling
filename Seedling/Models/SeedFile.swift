@@ -389,41 +389,14 @@ final class AppSettings: ObservableObject {
         // Default to on when the key has never been written.
         self.globalHotKeyEnabled = defaults.object(forKey: globalHotKeyEnabledKey) as? Bool ?? true
 
-        if let data = defaults.data(forKey: templatesBookmarkKey) {
-            var stale = false
-            if let url = try? URL(
-                resolvingBookmarkData: data,
-                options: [.withSecurityScope],
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-            ) {
-                self.templatesFolderURL = url
-            }
-        }
-
-        if let data = defaults.data(forKey: projectsHomeBookmarkKey) {
-            var stale = false
-            if let url = try? URL(
-                resolvingBookmarkData: data,
-                options: [.withSecurityScope],
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-            ) {
-                self.projectsHomeURL = url
-            }
-        }
+        self.templatesFolderURL = BookmarkedFolder(key: templatesBookmarkKey, defaults: defaults).resolve()
+        self.projectsHomeURL = BookmarkedFolder(key: projectsHomeBookmarkKey, defaults: defaults).resolve()
     }
 
     /// Set (or change) the Projects home. Stores a security-scoped bookmark.
     func setProjectsHome(_ url: URL) {
-        let didStart = url.startAccessingSecurityScopedResource()
-        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
         projectsHomeURL = url
-        if let data = try? url.bookmarkData(
-            options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil
-        ) {
-            defaults.set(data, forKey: projectsHomeBookmarkKey)
-        }
+        BookmarkedFolder(key: projectsHomeBookmarkKey, defaults: defaults).store(url)
     }
 
     /// Begin security-scoped access for the Projects home. Caller must end it.
@@ -445,19 +418,10 @@ final class AppSettings: ObservableObject {
 
     private func persistTemplatesBookmark() {
         guard let url = templatesFolderURL else {
-            defaults.removeObject(forKey: templatesBookmarkKey)
+            BookmarkedFolder(key: templatesBookmarkKey, defaults: defaults).clear()
             return
         }
-        do {
-            let data = try url.bookmarkData(
-                options: [.withSecurityScope],
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-            defaults.set(data, forKey: templatesBookmarkKey)
-        } catch {
-            // ignore — the folder will not survive across launches
-        }
+        BookmarkedFolder(key: templatesBookmarkKey, defaults: defaults).store(url)
     }
 
     /// The set of files a Seed will write: the user's templates folder if it's set and
