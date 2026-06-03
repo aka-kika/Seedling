@@ -23,30 +23,28 @@ struct SettingsView: View {
         let theme = KikaTheme.resolve(scheme: colorScheme)
 
         TabView {
-            rootTab(theme: theme)
-                .tabItem { Label("Root", systemImage: "leaf") }
-            gardenTab(theme: theme)
-                .tabItem { Label("Garden", systemImage: "tree") }
-            appearanceTab(theme: theme)
-                .tabItem { Label("Appearance", systemImage: "paintbrush") }
+            gardeningTab(theme: theme)
+                .tabItem { Label("Gardening", systemImage: "leaf") }
             keyboardTab(theme: theme)
                 .tabItem { Label("Keyboard", systemImage: "command") }
             aboutTab(theme: theme)
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 480, height: 440)
+        .tint(theme.accent)               // sage selection/controls, not the system accent
+        .padding(.top, 14)                // breathing room below the title bar
+        .frame(width: 440, height: 424)
         .environment(\.kikaTheme, theme)
         .preferredColorScheme(settings.appearance.colorScheme)
     }
 
-    // MARK: - Root tab (the seed source)
+    // MARK: - Gardening tab (Root + Garden + Theme)
 
-    private func rootTab(theme: KikaTheme) -> some View {
+    private func gardeningTab(theme: KikaTheme) -> some View {
         VStack(spacing: KikaSpacing.md) {
             folderHero(
                 theme: theme,
                 icon: isCustomTemplates ? "folder.badge.gearshape" : "tray",
-                title: isCustomTemplates ? "Your seeds" : "Built-in seeds",
+                title: isCustomTemplates ? "Your seeds — the Root" : "Built-in seeds — the Root",
                 path: templatesPath,
                 buttons: {
                     HStack(spacing: KikaSpacing.sm) {
@@ -60,17 +58,9 @@ struct SettingsView: View {
                             .accessibilityLabel(isCustomTemplates ? "Change seed root" : "Choose seed root")
                     }
                 },
-                note: "The folder with your .md files — the seeds planted into each new project. The built-in library is used when no folder is set."
+                note: "The folder with your .md files — the seeds planted into every new project."
             )
-            Spacer(minLength: 0)
-        }
-        .padding(KikaSpacing.lg)
-    }
 
-    // MARK: - Garden tab (where projects grow)
-
-    private func gardenTab(theme: KikaTheme) -> some View {
-        VStack(spacing: KikaSpacing.md) {
             folderHero(
                 theme: theme,
                 icon: "tree",
@@ -81,57 +71,70 @@ struct SettingsView: View {
                         .buttonStyle(KikaSecondaryButtonStyle())
                         .accessibilityLabel("Change garden")
                 },
-                note: "New projects grow as subfolders in your garden. Naming a project creates a folder with that name and plants the seeds inside it."
+                note: "Where projects grow — each one a named subfolder, seeded on the spot."
             )
+
+            HStack {
+                Text("Theme")
+                    .font(KikaFont.body)
+                    .foregroundStyle(theme.textPrimary)
+                Spacer()
+                themePicker
+            }
+            .frame(minHeight: 28)
+
             Spacer(minLength: 0)
         }
         .padding(KikaSpacing.lg)
     }
 
-    // MARK: - Appearance tab
-
-    private func appearanceTab(theme: KikaTheme) -> some View {
-        VStack(alignment: .leading, spacing: KikaSpacing.md) {
-            KikaRow(icon: "paintbrush", label: "Theme") {
-                Picker("Theme", selection: $settings.appearance) {
-                    ForEach(AppSettings.Appearance.allCases) { appearance in
-                        Image(systemName: appearance.symbolName)
-                            .tag(appearance)
-                            .accessibilityLabel(appearance.title)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 160)
-                .labelsHidden()
-                .accessibilityLabel("Theme")
+    private var themePicker: some View {
+        Picker("Theme", selection: $settings.appearance) {
+            ForEach(AppSettings.Appearance.allCases) { appearance in
+                Image(systemName: appearance.symbolName)
+                    .tag(appearance)
+                    .accessibilityLabel(appearance.title)
             }
-            Spacer(minLength: 0)
         }
-        .padding(KikaSpacing.lg)
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 140)
+        .labelsHidden()
+        .accessibilityLabel("Theme")
     }
 
     // MARK: - Keyboard tab
 
     private func keyboardTab(theme: KikaTheme) -> some View {
         VStack(alignment: .leading, spacing: KikaSpacing.sm) {
-            KikaRow(icon: "command", label: "Summon Seedling") {
-                HStack(spacing: KikaSpacing.sm) {
-                    keyCap("⌥⌘S", theme: theme)
-                    Toggle("", isOn: $settings.globalHotKeyEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .accessibilityLabel("Summon with Option Command S")
-                }
+            HStack(spacing: KikaSpacing.md) {
+                Image(systemName: "command")
+                    .font(.system(size: 14))
+                    .foregroundStyle(theme.textSecondary)
+                    .frame(width: 18)
+                Text("Summon Seedling")
+                    .font(KikaFont.body)
+                    .foregroundStyle(theme.textPrimary)
+                Spacer()
+                keyCap("⌥⌘S", theme: theme)
+                Toggle("", isOn: $settings.globalHotKeyEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .tint(theme.accent)
+                    .accessibilityLabel("Summon with Option Command S")
             }
+            .frame(minHeight: 32)
+
             shortcutRow("Grow · enter the garden", "⏎", theme: theme)
             shortcutRow("Dismiss", "esc", theme: theme)
             shortcutRow("Settings", "⌘,", theme: theme)
             shortcutRow("Quit", "⌘Q", theme: theme)
+
             Text("Summon works from anywhere; turn it off if it conflicts with another app.")
                 .font(KikaFont.caption)
                 .foregroundStyle(theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, KikaSpacing.sm)
+
             Spacer(minLength: 0)
         }
         .padding(KikaSpacing.lg)
@@ -147,7 +150,7 @@ struct SettingsView: View {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 96, height: 96)
+                .frame(width: 88, height: 88)
                 .accessibilityHidden(true)
 
             VStack(spacing: 4) {
@@ -160,7 +163,7 @@ struct SettingsView: View {
                     .textSelection(.enabled)
             }
 
-            Text("A calm app for seeding new projects with the right markdown files. Built on the KIKA Design System v2.")
+            Text("A calm app for seeding new projects with the right markdown files.")
                 .font(KikaFont.body)
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -191,10 +194,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: KikaSpacing.sm) {
             HStack(spacing: KikaSpacing.md) {
                 Image(systemName: icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 20))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(theme.accent)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 34, height: 34)
                     .background(theme.elevated)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 2) {
@@ -209,8 +212,8 @@ struct SettingsView: View {
                         .textSelection(.enabled)
                 }
                 Spacer()
+                buttons()
             }
-            buttons()
             Text(note)
                 .font(KikaFont.caption)
                 .foregroundStyle(theme.textTertiary)
@@ -241,7 +244,7 @@ struct SettingsView: View {
             Spacer()
             keyCap(keys, theme: theme)
         }
-        .frame(minHeight: 28)
+        .frame(minHeight: 30)
     }
 
     // MARK: - Folder pickers
