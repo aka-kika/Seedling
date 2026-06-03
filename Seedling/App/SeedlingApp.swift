@@ -21,22 +21,23 @@ struct SeedlingApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        Settings {
-            SettingsView()
-                .environmentObject(appDelegate.settings)
-        }
-        .windowResizability(.contentSize)
-
-        // Add the standard App menu items. The Settings scene already wires ⌘,
-        // to "Settings…", and the system provides Quit, but we make the App
-        // menu explicit so VoiceOver / menu discoverability work correctly.
-        .commands {
-            CommandGroup(replacing: .appInfo) {
-                Button("About Seedling") {
-                    NSApp.activate(ignoringOtherApps: true)
-                    NSApp.orderFrontStandardAboutPanel(nil)
+        // A valid scene is required, but we never surface the SwiftUI Settings
+        // window — its opener (`showSettingsWindow:`) is deprecated/broken for
+        // accessory apps on macOS 14+. Settings is shown via our own
+        // SettingsWindowController instead (see AppDelegate.openSettings()).
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appInfo) {
+                    Button("About Seedling") {
+                        NSApp.activate(ignoringOtherApps: true)
+                        NSApp.orderFrontStandardAboutPanel(nil)
+                    }
+                }
+                // Route the standard ⌘, / "Settings…" item to our own window.
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…") { appDelegate.openSettings() }
+                        .keyboardShortcut(",", modifiers: .command)
                 }
             }
-        }
     }
 }

@@ -18,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The centered ceremony window (replaces the old menu-bar popover).
     private lazy var ceremony = CeremonyWindowController(settings: settings)
 
+    /// Self-managed settings window (the SwiftUI Settings opener is broken on macOS 14+).
+    private lazy var settingsWindow = SettingsWindowController(settings: settings)
+
     /// System-wide ⌥⌘S summon hotkey (Carbon-backed, no Accessibility prompt).
     private let hotKey = GlobalHotKey()
 
@@ -199,22 +202,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.orderFrontStandardAboutPanel(nil)
     }
 
-    @objc private func openSettings() {
-        // An accessory (menu-bar-only) app can't reliably surface the SwiftUI
-        // Settings scene: with `.accessory` policy there's no active app context
-        // for `showSettingsWindow:` to open into. Briefly become a regular app so
-        // the window can open and come to the front; we drop back to `.accessory`
-        // when it closes (see `handleWindowClose`).
+    /// Open the settings window. We manage our own NSWindow (SettingsWindowController)
+    /// because the SwiftUI `Settings` scene opener (`showSettingsWindow:`) is
+    /// deprecated in macOS 14+ and no-ops for accessory apps. Briefly become a
+    /// regular app so the window comes to the front; `handleWindowClose` drops
+    /// back to `.accessory` when it closes.
+    @objc func openSettings() {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            // Front whatever titled window just appeared (Settings / About).
-            if let win = NSApp.windows.first(where: { $0.styleMask.contains(.titled) && $0.canBecomeKey }) {
-                win.makeKeyAndOrderFront(nil)
-                win.center()
-            }
-        }
+        settingsWindow.show()
     }
 
     /// When the last titled window (Settings/About) closes, return to being a
