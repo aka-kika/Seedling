@@ -32,7 +32,7 @@ struct SeedGrowthView: View {
     @State private var bloom = false
     @State private var bloomStarted = false
 
-    private var duration: Double { mode == .birth ? 1.2 : 1.4 }
+    private var duration: Double { mode == .birth ? 1.2 : 2.4 }
 
     var body: some View {
         ZStack {

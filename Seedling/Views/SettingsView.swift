@@ -28,7 +28,7 @@ struct SettingsView: View {
             Section {
                 templatesHero(theme: theme)
             } header: {
-                Text("Seed library")
+                Text("Root")
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -45,13 +45,13 @@ struct SettingsView: View {
                     pickProjectsHome()
                 }
                 .buttonStyle(KikaSecondaryButtonStyle())
-                .accessibilityLabel("Change Projects home")
-                Text("New projects are created as subfolders here. Naming a project in the window creates a folder with that name and plants the seeds inside it.")
+                .accessibilityLabel("Change garden")
+                Text("New projects grow as subfolders in your garden. Naming a project creates a folder with that name and plants the seeds inside it.")
                     .font(KikaFont.caption)
                     .foregroundStyle(theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
-                Text("Projects home")
+                Text("Garden")
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -65,18 +65,25 @@ struct SettingsView: View {
             }
 
             Section {
-                KikaRow(icon: "command", label: "Summon with ⌥⌘S") {
-                    Toggle("", isOn: $settings.globalHotKeyEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .accessibilityLabel("Summon with Option Command S")
+                KikaRow(icon: "command", label: "Summon Seedling") {
+                    HStack(spacing: KikaSpacing.sm) {
+                        keyCap("⌥⌘S", theme: theme)
+                        Toggle("", isOn: $settings.globalHotKeyEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .accessibilityLabel("Summon with Option Command S")
+                    }
                 }
-                Text("Open Seedling from anywhere with a global keyboard shortcut. Turn this off if it conflicts with another app.")
+                shortcutRow("Grow · enter the garden", "⏎", theme: theme)
+                shortcutRow("Dismiss", "esc", theme: theme)
+                shortcutRow("Settings", "⌘,", theme: theme)
+                shortcutRow("Quit", "⌘Q", theme: theme)
+                Text("Summon works from anywhere; turn it off if it conflicts with another app.")
                     .font(KikaFont.caption)
                     .foregroundStyle(theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
-                Text("Shortcut")
+                Text("Keyboard")
                     .accessibilityAddTraits(.isHeader)
             }
 
@@ -107,7 +114,7 @@ struct SettingsView: View {
                     .background(theme.elevated)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isCustomTemplates ? "Custom templates" : "Built-in library")
+                    Text(isCustomTemplates ? "Your seeds" : "Built-in seeds")
                         .font(KikaFont.body)
                         .foregroundStyle(theme.textPrimary)
                     Text(templatesPath)
@@ -142,7 +149,7 @@ struct SettingsView: View {
         .background(theme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Templates folder. \(isCustomTemplates ? "Custom" : "Built-in library").")
+        .accessibilityLabel("Root. \(isCustomTemplates ? "Your seeds" : "Built-in seeds").")
     }
 
     // MARK: - Theme picker
@@ -204,6 +211,29 @@ struct SettingsView: View {
         .padding(.vertical, KikaSpacing.sm)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("About Seedling. Version 3.0. A calm app for seeding new projects with the right markdown files.")
+    }
+
+    // MARK: - Keyboard shortcut rows
+
+    private func keyCap(_ keys: String, theme: KikaTheme) -> some View {
+        Text(keys)
+            .font(KikaFont.caption)
+            .foregroundStyle(theme.textTertiary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(theme.elevated))
+            .accessibilityLabel(keys)
+    }
+
+    private func shortcutRow(_ label: String, _ keys: String, theme: KikaTheme) -> some View {
+        HStack {
+            Text(label)
+                .font(KikaFont.body)
+                .foregroundStyle(theme.textSecondary)
+            Spacer()
+            keyCap(keys, theme: theme)
+        }
+        .frame(minHeight: 28)
     }
 
     private func pickTemplatesFolder() {
