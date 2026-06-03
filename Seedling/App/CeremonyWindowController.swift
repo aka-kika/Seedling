@@ -43,6 +43,14 @@ final class CeremonyWindowController {
 
         let hosting = NSHostingView(rootView: root)
         hosting.translatesAutoresizingMaskIntoConstraints = true
+        // Clip the panel's content backing to the same rounded shape as the glass,
+        // otherwise the square content layer shows a faint "cut" at the corners on
+        // a light desktop (the glass is rounded but its backing isn't).
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = NSColor.clear.cgColor
+        hosting.layer?.cornerRadius = 22
+        hosting.layer?.cornerCurve = .continuous
+        hosting.layer?.masksToBounds = true
 
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 360, height: 280),
