@@ -9,6 +9,12 @@
 *A tiny, calm macOS app for starting new projects —*
 *made for late nights, brain resets, and fresh beginnings.* 🌙
 
+<br>
+
+[![Download Seedling 3.0](https://img.shields.io/badge/Download-Seedling%203.0-97CEC2?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/dot-RealityTest/Seedling/releases/latest/download/Seedling-3.0.dmg)
+
+<sub>Notarized by Apple · macOS 26+ · drag to Applications and go</sub>
+
 </div>
 
 ---
@@ -39,15 +45,19 @@ It never overwrites anything. Re-plant into a patch that already exists and the 
 
 No menus to wade through. No settings page pretending to be a workflow. Just a moment.
 
-## Run it
+## Get it
 
-Seedling is a native macOS app — SwiftUI, built for macOS 26 with Liquid Glass.
+**The easy way** — [**download the latest `.dmg`**](https://github.com/dot-RealityTest/Seedling/releases/latest/download/Seedling-3.0.dmg), open it, and drag **Seedling** to **Applications**. It's signed and **notarized by Apple**, so it opens with no security warnings. (Or browse all [releases](https://github.com/dot-RealityTest/Seedling/releases).)
+
+**From source** — it's a native macOS app (SwiftUI, built for macOS 26 with Liquid Glass):
 
 ```bash
 open Seedling.xcodeproj   # then ⌘R in Xcode
 ```
 
-Look for the leaf 🌿 in your menu bar. On first run it asks *where are your seeds?* then *take me to your garden* — after that it's just `⌥⌘S`, a name, and grow.
+Either way: look for the leaf 🌿 in your menu bar. On first run it asks *where are your seeds?* then *take me to your garden* — after that it's just `⌥⌘S`, a name, and grow.
+
+> Requires **macOS 26 (Tahoe)** or later.
 
 ## Quiet by design
 
