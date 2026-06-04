@@ -169,7 +169,7 @@ struct SettingsView: View {
                     .textSelection(.enabled)
             }
 
-            Text("A calm app for seeding new projects with the right markdown files.")
+            Text("Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
                 .font(KikaFont.body)
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -183,7 +183,7 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(KikaSpacing.lg)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("About Seedling. Version 3.0. A calm app for seeding new projects with the right markdown files.")
+        .accessibilityLabel("About Seedling. Version 3.0. Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
     }
 
     /// The app icon, loaded from the asset catalog (full-res), then the bundled
