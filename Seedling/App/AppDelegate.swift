@@ -25,6 +25,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotKey = GlobalHotKey()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Set the Dock/app icon from the asset catalog at runtime. Launch
+        // Services stubbornly caches the generic icon for dev builds run from
+        // DerivedData; assigning applicationIconImage bypasses that cache so the
+        // real icon shows in the Dock (while Settings/About is open) and About.
+        if let icon = NSImage(named: "AppIcon")
+            ?? Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap({ NSImage(contentsOf: $0) }) {
+            NSApp.applicationIconImage = icon
+        }
+
         configureStatusItem()
         updateStatusItemIcon()
 

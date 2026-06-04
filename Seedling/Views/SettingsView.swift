@@ -150,9 +150,9 @@ struct SettingsView: View {
 
     private func aboutTab(theme: KikaTheme) -> some View {
         VStack(spacing: KikaSpacing.md) {
-            // The real app icon (falls back to the generic one until an AppIcon
-            // asset is added — it then appears here automatically).
-            Image(nsImage: NSApplication.shared.applicationIconImage)
+            // Load the icon straight from the bundle (.icns) so it shows even if
+            // Launch Services has cached the generic icon for this dev build.
+            Image(nsImage: appIconImage)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 88, height: 88)
@@ -184,6 +184,17 @@ struct SettingsView: View {
         .padding(KikaSpacing.lg)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("About Seedling. Version 3.0. A calm app for seeding new projects with the right markdown files.")
+    }
+
+    /// The app icon, loaded from the asset catalog (full-res), then the bundled
+    /// `.icns`, then the running app's icon. Bypasses the Launch Services cache.
+    private var appIconImage: NSImage {
+        if let named = NSImage(named: "AppIcon") { return named }
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        return NSApplication.shared.applicationIconImage
     }
 
     // MARK: - Shared folder hero card
