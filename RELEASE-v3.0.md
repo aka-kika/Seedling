@@ -51,8 +51,8 @@ A tiny, calm macOS menu-bar app for starting new projects. Summon a centered win
 |---|---|
 | Artifact | `Seedling-3.0.dmg` (≈2.8 MB) |
 | DMG | code-signed + notarized + stapled; "drag to Applications" layout |
-| Release | https://github.com/dot-RealityTest/Seedling/releases/tag/v3.0 |
-| Download | https://github.com/dot-RealityTest/Seedling/releases/download/v3.0/Seedling-3.0.dmg |
+| Release | https://github.com/aka-kika/Seedling/releases/tag/v3.0 |
+| Download | https://github.com/aka-kika/Seedling/releases/download/v3.0/Seedling-3.0.dmg |
 | **SHA-256** | `3a0b0e16b10cfee270f8c16f8b7b90f5eec9f5b6aa35bef576f73a88da2665a8` |
 
 ## Verify it yourself
