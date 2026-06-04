@@ -4,3 +4,7 @@ DerivedData/
 .DS_Store
 *.xcuserstate
 xcuserdata/
+
+# Release artifacts
+release_build/
+dist/
