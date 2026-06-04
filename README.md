@@ -15,6 +15,10 @@
 
 <sub>Notarized by Apple · macOS 26+ · drag to Applications and go</sub>
 
+<br><br>
+
+<img src="docs/seedling-demo.gif" width="620" alt="Name a project, watch a line-art seedling grow, and enter the garden"/>
+
 </div>
 
 ---
