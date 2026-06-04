@@ -1,139 +1,72 @@
+<div align="center">
+
+<img src="Seedling/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512.png" width="120" alt="Seedling"/>
+
 # Seedling
 
-A calm, premium macOS menu bar app for **seeding new projects with the right markdown files**.
+**Plant a seed and watch it grow.**
 
-Pick a folder, fill in a name, hit **Seed**. Seedling writes the standard set — README, AGENTS, COMMANDS, CONTRIBUTING, LICENSE — and skips any that already exist. Point it at your own templates folder to use your own markdown files instead of the built-in ones.
+*A tiny, calm macOS app for starting new projects —*
+*made for late nights, brain resets, and fresh beginnings.* 🌙
 
-Built on the **KIKA Design System v2** with Apple's **Liquid Glass**: dark-first, restrained, a pastel sage accent, and excellent light mode. Audited against the Apple Human Interface Guidelines for macOS.
-
----
-
-## What it does
-
-| Workflow | What you do |
-|---|---|
-| **First time** | Click the leaf → *Plant your first seed* → **Choose your path** (your main folder) → it grows |
-| **Next time** | Click the leaf (or `⌥⌘S` from anywhere) → your main path is ready → hit `⌘↩` |
-| **From Finder** | Right-click any folder → Services → **Seed this folder** |
-| **Change main path / templates** | Right-click the leaf → Settings… → Main path / Templates folder |
-| **Light / dark mode** | Right-click the leaf → Settings… → Appearance |
-| **Quit** | Right-click the leaf → Quit Seedling (`⌘Q`) |
-
-When you click **Seed**, Seedling writes the default set (5 built-in files) — or the markdown files in your templates folder, if you've set one. Existing files are skipped, never overwritten. The result list shows what was created; click any file to reveal it in Finder.
+</div>
 
 ---
 
-## Requirements
+Some nights you don't want a dashboard. You just want to *start something*.
 
-- **macOS 26 Tahoe** or later (required for Liquid Glass)
-- **Xcode 26** or later (for building from source)
-- **Swift 5.9+**
+Seedling lives quietly in your menu bar. Summon it — a click, or `⌥⌘S` — and a small window fades into the center of your screen: just a seed in the dark, waiting for a name. Type one. Watch a little line-art seedling draw itself and bloom. Your new project is alive.
 
----
+That's the whole thing. That's the point.
 
-## Build & run
+## The idea 🌱
+
+Every project starts from the same handful of files — your rules and guidelines. `AGENTS.md`, `CLAUDE.md`, `README`, `TODO`, `SECURITY`… the DNA a project grows from.
+
+In Seedling, those files are your **seeds**, kept in a folder you call your **Root**. Name a new project and Seedling plants a fresh copy of them into your **Garden** — and a new folder is born. Tend your seeds whenever you like; every future project grows from the latest version.
+
+> 🌰 **Root** — where your seed files live
+> 🌳 **Garden** — where new projects grow
+> 🌿 **Plant** — name a project, and it sprouts, seeded and ready
+
+It never overwrites anything. Re-plant into a patch that already exists and the old files stay untouched.
+
+## A small ceremony
+
+1. **A seed in the dark** — one quiet field: *name your project*
+2. **It grows** — the line draws itself, then a single breath of light
+3. **Enter the garden** — your new folder opens, and the window fades away
+
+No menus to wade through. No settings page pretending to be a workflow. Just a moment.
+
+## Run it
+
+Seedling is a native macOS app — SwiftUI, built for macOS 26 with Liquid Glass.
 
 ```bash
-cd Seedling
-open Seedling.xcodeproj
+open Seedling.xcodeproj   # then ⌘R in Xcode
 ```
 
-Press `⌘R` to build and run. The leaf icon appears in your menu bar.
+Look for the leaf 🌿 in your menu bar. On first run it asks *where are your seeds?* then *take me to your garden* — after that it's just `⌥⌘S`, a name, and grow.
 
-From the command line:
+## Quiet by design
 
-```bash
-xcodebuild -project Seedling.xcodeproj -scheme Seedling -configuration Debug build
-open build/Build/Products/Debug/Seedling.app
-```
+One pastel-sage accent, hairlines, Liquid Glass, no drop shadows — and a single belief: **starting a project should feel like a new beginning, not a chore.**
 
-To reset all settings (templates folder, last-seed memory, theme):
+<details>
+<summary>For the curious — the technical bits</summary>
 
-```bash
-defaults delete com.seedling.app
-```
+<br>
+
+A focused menu-bar app: no main window, no networking, ~16 small Swift files. Sandboxed with security-scoped bookmarks, a Carbon global hotkey, and a Finder *"Seed this folder"* service on the side. The growth is pure SwiftUI line-art (no image assets), and the whole flow lives in a centered, key-accepting `NSPanel`.
+
+- 🛠 Full engineering tour → [HANDOFF.md](HANDOFF.md)
+- 🗺 Plain-language map → [PROJECT_GUIDE.md](PROJECT_GUIDE.md)
+
+</details>
 
 ---
 
-## Keyboard shortcuts
-
-| Action | Shortcut | Where |
-|---|---|---|
-| Summon from anywhere | `⌥⌘S` | Global (toggle in Settings) |
-| Pick a folder | `⌘O` | Popover |
-| Seed | `⌘↩` | Popover (seed screen) |
-| Close the popover | `Esc` | Popover (anywhere) |
-| Settings | `⌘,` | From the menu bar (right-click → Settings…) |
-| Quit | `⌘Q` | From the menu bar (right-click → Quit) |
-
----
-
-## Project layout
-
-```
-Seedling/
-├── App/
-│   ├── SeedlingApp.swift          # @main, Settings scene, App menu
-│   ├── AppDelegate.swift          # NSStatusItem, NSPopover, right-click NSMenu, hotkey, Finder Service, Settings opening
-│   ├── GlobalHotKey.swift         # Carbon ⌥⌘S summon hotkey
-│   └── SeedHUDPanel.swift         # transient growth-animation panel for Finder-Service seeds
-├── Theme/
-│   ├── KikaColors.swift           # tokens, KikaTheme.resolve(scheme:), Color(hex:)
-│   ├── KikaComponents.swift       # KikaSectionHeader, KikaRow, KikaDivider, glass button styles
-│   └── Microinteractions.swift    # focus-underline and other reusable interaction modifiers
-├── Models/
-│   └── SeedFile.swift             # SeedFile, SeedLibrary, ProjectOptions, AppSettings
-├── Engine/
-│   ├── Seedling.swift             # template rendering + file writing
-│   └── TemplateLoader.swift       # load user .md files from a folder
-├── Views/
-│   ├── MenuBarContent.swift       # the popover body (welcome / project / source / seed / result)
-│   ├── WelcomeView.swift          # first-run "Plant your first seed" screen
-│   ├── SeedGrowthView.swift       # line-art seed-growth animation (.birth / .growth)
-│   └── SettingsView.swift         # Settings window (main path + templates + appearance + hotkey + about)
-├── Resources/
-│   ├── Info.plist                 # LSUIElement = YES, macOS 26, NSServices (Finder "Seed this folder")
-│   └── Seedling.entitlements      # sandbox + user-selected files + bookmarks
-└── scripts/
-    └── smoke_test.swift           # end-to-end engine test
-```
-
----
-
-## Adding a built-in seed file
-
-Open `Seedling/Models/SeedFile.swift` and append a new `SeedFile(...)` to `SeedLibrary.files`. Set `defaultEnabled: true` if you want it to be part of the default seed set.
-
-```swift
-SeedFile(
-    id: "support",
-    name: "SUPPORT.md",
-    icon: "questionmark.bubble",
-    description: "Where to ask questions",
-    category: .community,
-    content: """
-    # Support
-
-    - Slack: TODO
-    - Discussions: TODO
-    """,
-    defaultEnabled: false,
-    source: .builtIn
-)
-```
-
-`Category` is a grouping (`overview`, `ai`, `workflow`, `community`, `meta`) reserved for future UI. The popover doesn't surface categories today — files are written as a flat set.
-
----
-
-## License
-
-© 2026 Seedling. All rights reserved.
-
----
-
-## See also
-
-- **[HANDOFF.md](./HANDOFF.md)** — Architecture deep-dive, sandbox model, run-from-build commands, common tasks, and gotchas for the next developer picking this up.
-- **KIKA Design System** — `~/.agents/skills/kika-design-system/`
-- **Apple HIG (macOS, SwiftUI)** — `~/Documents/OPENSKILLZ/apple-hig-swiftui-macos/`
+<div align="center">
+<sub>Made on a late night, for late nights. 🌙🌱</sub>
+</div>
