@@ -16,7 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = AppSettings()
 
     /// The centered ceremony window (replaces the old menu-bar popover).
-    private lazy var ceremony = CeremonyWindowController(settings: settings)
+    private lazy var ceremony = CeremonyWindowController(
+        settings: settings,
+        onSettings: { [weak self] in self?.openSettingsFromCeremony() }
+    )
 
     /// Self-managed settings window (the SwiftUI Settings opener is broken on macOS 14+).
     private lazy var settingsWindow = SettingsWindowController(settings: settings)
@@ -89,8 +92,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleButtonPress(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
-        if event?.type == .rightMouseUp {
-            showContextMenu()
+        // ctrl+click counts as a context click: macOS 27 stops delivering
+        // right-mouse events to status item buttons entirely (the click dies in
+        // MenuBarAgent), so on that OS the ctrl+click path — which arrives as a
+        // left-click with the control flag — is the only gesture that still works.
+        let isContextClick = event?.type == .rightMouseUp
+            || event?.modifierFlags.contains(.control) == true
+        if isContextClick {
+            showContextMenu(from: sender)
         } else {
             ceremony.toggle()
         }
@@ -178,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Right-click context menu
 
-    private func showContextMenu() {
+    private func showContextMenu(from button: NSStatusBarButton) {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
@@ -194,9 +203,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quit.target = self
         menu.addItem(quit)
 
-        statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
+        // Pop the menu directly under the leaf. The old trick of assigning
+        // statusItem.menu and re-driving performClick stopped showing anything
+        // on macOS 27; popUp tracks the menu right here in the action.
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 6), in: button)
     }
 
     // MARK: - Menu actions
@@ -210,6 +220,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow.show()
+    }
+
+    /// The ceremony window's gear button. Close the (floating) ceremony first so
+    /// it doesn't hover over the settings window it just opened.
+    private func openSettingsFromCeremony() {
+        ceremony.dismiss()
+        openSettings()
     }
 
     /// When the last titled window (Settings/About) closes, return to being a

@@ -20,6 +20,11 @@ struct SeedCeremonyView: View {
     /// Called when the ceremony is over (entered the garden, dismissed, or Esc).
     let onFinish: () -> Void
 
+    /// Opens the Settings window. The leaf's right-click menu is unreachable on
+    /// macOS 27 (the system swallows right-clicks on status items), so the
+    /// ceremony carries its own quiet door to Settings.
+    var onSettings: () -> Void = {}
+
     enum Phase { case onboarding, rest, growing, alive, failed }
     enum OnboardStep { case seeds, garden }
 
@@ -32,6 +37,7 @@ struct SeedCeremonyView: View {
     @State private var failureMessage: String = ""
     @State private var nudge = false
     @State private var seedPump: CGFloat = 1
+    @State private var gearHovered = false
     @FocusState private var nameFocused: Bool
 
     private let size: CGFloat = 300
@@ -50,8 +56,26 @@ struct SeedCeremonyView: View {
             .padding(.vertical, KikaSpacing.lg)
             .padding(.horizontal, KikaSpacing.lg)
             .glassEffect(.regular, in: .rect(cornerRadius: 22))
+            .overlay(alignment: .bottomTrailing) { settingsGear }
             .onAppear { configureInitialPhase() }
             .onExitCommand { onFinish() }   // Esc closes the window (no folder open)
+    }
+
+    /// A quiet gear in the corner — the always-reachable path to Settings
+    /// (also answers ⌘, while the ceremony is up).
+    private var settingsGear: some View {
+        Button(action: onSettings) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(theme.textTertiary)
+                .opacity(gearHovered ? 1 : 0.55)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(",", modifiers: .command)
+        .onHover { gearHovered = $0 }
+        .padding(KikaSpacing.sm)
+        .accessibilityLabel("Settings")
+        .help("Settings (⌘,)")
     }
 
     @ViewBuilder
