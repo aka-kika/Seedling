@@ -11,7 +11,7 @@
 
 <br>
 
-[![Download Seedling 3.0](https://img.shields.io/badge/Download-Seedling%203.0-97CEC2?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/aka-kika/Seedling/releases/latest/download/Seedling-3.0.dmg)
+[![Download Seedling 3.0.1](https://img.shields.io/badge/Download-Seedling%203.0.1-97CEC2?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/aka-kika/Seedling/releases/latest/download/Seedling-3.0.1.dmg)
 
 <sub>Notarized by Apple · macOS 26+ · drag to Applications and go</sub>
 
@@ -51,7 +51,7 @@ No menus to wade through. No settings page pretending to be a workflow. Just a m
 
 ## Get it
 
-**The easy way** — [**download the latest `.dmg`**](https://github.com/aka-kika/Seedling/releases/latest/download/Seedling-3.0.dmg), open it, and drag **Seedling** to **Applications**. It's signed and **notarized by Apple**, so it opens with no security warnings. (Or browse all [releases](https://github.com/aka-kika/Seedling/releases).)
+**The easy way** — [**download the latest `.dmg`**](https://github.com/aka-kika/Seedling/releases/latest/download/Seedling-3.0.1.dmg), open it, and drag **Seedling** to **Applications**. It's signed and **notarized by Apple**, so it opens with no security warnings. (Or browse all [releases](https://github.com/aka-kika/Seedling/releases).)
 
 **From source** — it's a native macOS app (SwiftUI, built for macOS 26 with Liquid Glass):
 
