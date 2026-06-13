@@ -38,6 +38,7 @@ struct SeedCeremonyView: View {
     @State private var nudge = false
     @State private var seedPump: CGFloat = 1
     @State private var gearHovered = false
+    @State private var quitHovered = false
     @FocusState private var nameFocused: Bool
 
     private let size: CGFloat = 300
@@ -56,6 +57,7 @@ struct SeedCeremonyView: View {
             .padding(.vertical, KikaSpacing.lg)
             .padding(.horizontal, KikaSpacing.lg)
             .glassEffect(.regular, in: .rect(cornerRadius: 22))
+            .overlay(alignment: .bottomLeading) { quitButton }
             .overlay(alignment: .bottomTrailing) { settingsGear }
             .onAppear { configureInitialPhase() }
             .onExitCommand { onFinish() }   // Esc closes the window (no folder open)
@@ -76,6 +78,25 @@ struct SeedCeremonyView: View {
         .padding(KikaSpacing.sm)
         .accessibilityLabel("Settings")
         .help("Settings (⌘,)")
+    }
+
+    /// A quiet power glyph in the opposite corner from the gear — the visible way
+    /// to quit. macOS 27 swallows the leaf's right-click menu (where Quit used to
+    /// live), so the ceremony carries its own door out. Far from the name field
+    /// and the gear so it isn't fat-fingered mid-naming; ⌘Q works here too.
+    private var quitButton: some View {
+        Button(action: { NSApp.terminate(nil) }) {
+            Image(systemName: "power")
+                .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(theme.textTertiary)
+                .opacity(quitHovered ? 1 : 0.45)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("q", modifiers: .command)
+        .onHover { quitHovered = $0 }
+        .padding(KikaSpacing.sm)
+        .accessibilityLabel("Quit Seedling")
+        .help("Quit Seedling (⌘Q)")
     }
 
     @ViewBuilder

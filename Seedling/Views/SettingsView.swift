@@ -150,40 +150,56 @@ struct SettingsView: View {
 
     private func aboutTab(theme: KikaTheme) -> some View {
         VStack(spacing: KikaSpacing.md) {
-            // Load the icon straight from the bundle (.icns) so it shows even if
-            // Launch Services has cached the generic icon for this dev build.
-            Image(nsImage: appIconImage)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 88, height: 88)
-                .accessibilityHidden(true)
-                .padding(.top, KikaSpacing.sm)
+            VStack(spacing: KikaSpacing.md) {
+                // Load the icon straight from the bundle (.icns) so it shows even if
+                // Launch Services has cached the generic icon for this dev build.
+                Image(nsImage: appIconImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 88, height: 88)
+                    .accessibilityHidden(true)
+                    .padding(.top, KikaSpacing.sm)
 
-            VStack(spacing: 4) {
-                Text("Seedling")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(theme.textPrimary)
-                Text("Version 3.0 (build 1)")
+                VStack(spacing: 4) {
+                    Text("Seedling")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(theme.textPrimary)
+                    Text(versionString)
+                        .font(KikaFont.caption)
+                        .foregroundStyle(theme.textTertiary)
+                        .textSelection(.enabled)
+                }
+
+                Text("Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
+                    .font(KikaFont.body)
+                    .foregroundStyle(theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, KikaSpacing.lg)
+
+                Text("© 2026 Seedling")
                     .font(KikaFont.caption)
                     .foregroundStyle(theme.textTertiary)
-                    .textSelection(.enabled)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("About Seedling. \(versionString). Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
 
-            Text("Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
-                .font(KikaFont.body)
-                .foregroundStyle(theme.textSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, KikaSpacing.lg)
-
-            Text("© 2026 Seedling")
-                .font(KikaFont.caption)
-                .foregroundStyle(theme.textTertiary)
+            // Quit lives here too: macOS 27 swallows the leaf's right-click menu,
+            // so this is the visible, always-reachable way out (⌘Q also works).
+            Button("Quit Seedling") { NSApp.terminate(nil) }
+                .buttonStyle(KikaSecondaryButtonStyle())
+                .keyboardShortcut("q", modifiers: .command)
+                .accessibilityLabel("Quit Seedling")
         }
         .frame(maxWidth: .infinity)
         .padding(KikaSpacing.lg)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("About Seedling. Version 3.0. Plant a seed and watch it grow. Seedling sows your rules and guidelines into every new project — a quiet ceremony for a new beginning.")
+    }
+
+    /// App version, read live from the bundle so it never drifts from Info.plist.
+    private var versionString: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "Version \(short) (build \(build))"
     }
 
     /// The app icon, loaded from the asset catalog (full-res), then the bundled
