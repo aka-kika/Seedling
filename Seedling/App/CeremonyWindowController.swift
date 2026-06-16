@@ -19,13 +19,11 @@ final class KeyablePanel: NSPanel {
 @MainActor
 final class CeremonyWindowController {
     private let settings: AppSettings
-    private let onSettings: () -> Void
     private var panel: KeyablePanel?
     private var outsideClickMonitor: Any?
 
-    init(settings: AppSettings, onSettings: @escaping () -> Void = {}) {
+    init(settings: AppSettings) {
         self.settings = settings
-        self.onSettings = onSettings
     }
 
     var isShown: Bool { panel != nil }
@@ -38,8 +36,7 @@ final class CeremonyWindowController {
             return
         }
         let (theme, scheme) = resolveTheme()
-        let root = SeedCeremonyView(onFinish: { [weak self] in self?.dismiss() },
-                                    onSettings: onSettings)
+        let root = SeedCeremonyView(onFinish: { [weak self] in self?.dismiss() })
             .environmentObject(settings)
             .environment(\.kikaTheme, theme)
             .preferredColorScheme(scheme)

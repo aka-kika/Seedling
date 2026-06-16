@@ -5,8 +5,9 @@ import Combine
 // MARK: - AppDelegate
 //
 // Owns the NSStatusItem that lives in the menu bar.
-// - Left-click / ⌥⌘S: summons the centered ceremony window (the seed workflow)
-// - Right-click: shows an NSMenu with About / Settings / Quit
+// - Click: pops the leaf menu (Open Seedling / Settings… / Quit). macOS 27 stopped
+//   delivering right-clicks to status items, so the menu *is* the primary gesture.
+// - Open Seedling / ⌥⌘S: summons the centered ceremony window (the seed workflow).
 //
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -16,10 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = AppSettings()
 
     /// The centered ceremony window (replaces the old menu-bar popover).
-    private lazy var ceremony = CeremonyWindowController(
-        settings: settings,
-        onSettings: { [weak self] in self?.openSettingsFromCeremony() }
-    )
+    private lazy var ceremony = CeremonyWindowController(settings: settings)
 
     /// Self-managed settings window (the SwiftUI Settings opener is broken on macOS 14+).
     private lazy var settingsWindow = SettingsWindowController(settings: settings)
@@ -91,18 +89,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Button handler
 
     @objc private func handleButtonPress(_ sender: NSStatusBarButton) {
-        let event = NSApp.currentEvent
-        // ctrl+click counts as a context click: macOS 27 stops delivering
-        // right-mouse events to status item buttons entirely (the click dies in
-        // MenuBarAgent), so on that OS the ctrl+click path — which arrives as a
-        // left-click with the control flag — is the only gesture that still works.
-        let isContextClick = event?.type == .rightMouseUp
-            || event?.modifierFlags.contains(.control) == true
-        if isContextClick {
-            showContextMenu(from: sender)
-        } else {
-            ceremony.toggle()
-        }
+        // Any click pops the leaf menu. macOS 27 stopped delivering right-mouse
+        // events to status items, so we no longer branch on the gesture — the
+        // menu carries "Open Seedling" as its first item.
+        showLeafMenu(from: sender)
     }
 
     // MARK: - Global hotkey
@@ -185,11 +175,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return (KikaTheme.resolve(scheme: scheme), preferred)
     }
 
-    // MARK: - Right-click context menu
+    // MARK: - Leaf menu
+    //
+    // The leaf's click pops this menu. "Open Seedling" summons the ceremony;
+    // Settings/Quit live here permanently. We assemble + popUp the menu in the
+    // action (rather than assigning statusItem.menu and re-driving performClick,
+    // which went dark on macOS 27) — popUp is the path that still tracks there.
 
-    private func showContextMenu(from button: NSStatusBarButton) {
+    private func showLeafMenu(from button: NSStatusBarButton) {
         let menu = NSMenu()
         menu.autoenablesItems = false
+
+        // Open Seedling — first item, so it's the default target. Summons (not
+        // toggles) so picking it always brings the ceremony forward.
+        let open = NSMenuItem(title: "Open Seedling", action: #selector(openCeremony), keyEquivalent: "")
+        open.target = self
+        // Show ⌥⌘S as a hint only when that global hotkey is actually live.
+        if settings.globalHotKeyEnabled {
+            open.keyEquivalent = "s"
+            open.keyEquivalentModifierMask = [.command, .option]
+        }
+        menu.addItem(open)
+
+        menu.addItem(NSMenuItem.separator())
 
         // Settings… (About now lives in a Settings tab)
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
@@ -203,10 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quit.target = self
         menu.addItem(quit)
 
-        // Pop the menu directly under the leaf. The old trick of assigning
-        // statusItem.menu and re-driving performClick stopped showing anything
-        // on macOS 27; popUp tracks the menu right here in the action.
+        // Light the leaf while the menu tracks, like a native status menu. popUp
+        // is modal, so the highlight clears as soon as it returns.
+        button.highlight(true)
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 6), in: button)
+        button.highlight(false)
     }
 
     // MARK: - Menu actions
@@ -222,11 +231,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow.show()
     }
 
-    /// The ceremony window's gear button. Close the (floating) ceremony first so
-    /// it doesn't hover over the settings window it just opened.
-    private func openSettingsFromCeremony() {
-        ceremony.dismiss()
-        openSettings()
+    /// "Open Seedling" menu item. Summon (not toggle) so the menu never closes
+    /// the ceremony — picking it always shows and focuses the window.
+    @objc private func openCeremony() {
+        ceremony.summon()
     }
 
     /// When the last titled window (Settings/About) closes, return to being a
