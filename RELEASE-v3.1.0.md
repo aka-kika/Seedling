@@ -34,30 +34,23 @@ other menu bar app already uses:
 
 ## Code signing & notarization
 
-> _Filled in after the signed + notarized Release build — same recipe as v3.0.x
-> (Developer ID, hardened runtime, notarized + stapled)._
-
 | Field | Value |
 |---|---|
 | Identity | **Developer ID Application: Veronica Loren (P5RB3W3D58)** |
 | Hardened runtime | ✅ (`flags=runtime`, `get-task-allow` stripped) |
-| Notary status | _pending_ |
-| Submission ID | _pending_ |
-| Ticket | _staple after notarization (`stapler validate`)_ |
-| Gatekeeper | _verify `accepted · source=Notarized Developer ID`_ |
+| Notary status | **Accepted** ✅ |
+| Submission ID | `5c86a24f-0be2-4f9a-b0fe-343bbc3893fd` |
+| Ticket | stapled to the DMG (`stapler validate` ✓) |
+| Gatekeeper | `accepted · source=Notarized Developer ID` |
 
 ## Distribution
 
-> _Fill the SHA-256 from the actual notarized DMG; the `latest/download` links in
-> the README resolve once the v3.1.0 GitHub release is published with
-> `Seedling-3.1.0.dmg` attached._
-
 | Field | Value |
 |---|---|
-| Artifact | `Seedling-3.1.0.dmg` |
+| Artifact | `Seedling-3.1.0.dmg` (≈3.0 MB) |
 | Release | https://github.com/aka-kika/Seedling/releases/tag/v3.1.0 |
 | Download | https://github.com/aka-kika/Seedling/releases/download/v3.1.0/Seedling-3.1.0.dmg |
-| **SHA-256** | _pending — `shasum -a 256 Seedling-3.1.0.dmg`_ |
+| **SHA-256** | `238d5097bfb89f3bf16490679ee8e769dc0da6131f19dc700c7c5af9a57ca870` |
 
 Built the same way as [v3.0](RELEASE-v3.0.md), [v3.0.1](RELEASE-v3.0.1.md), and
 [v3.0.2](RELEASE-v3.0.2.md) — same recipe, same identity, same garden. 🌱
