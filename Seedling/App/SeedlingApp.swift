@@ -7,11 +7,12 @@
 //
 //  Architecture:
 //  - The `AppDelegate` owns an `NSStatusItem`.
-//  - Left-click on the leaf icon / ⌥⌘S → centered ceremony window (CeremonyWindowController).
-//  - Right-click on the leaf icon → NSMenu (About / Settings / Quit).
-//  - Settings opens the standard SwiftUI `Settings` scene.
-//  - `Commands` adds the standard App menu (About / Settings / Quit) so the
-//    app behaves correctly when activated (e.g. focus moves to Settings).
+//  - Click on the leaf icon → NSMenu (Open Seedling / Settings… / Quit). macOS 27
+//    stopped delivering right-clicks to status items, so the menu is the primary
+//    gesture; "Open Seedling" / ⌥⌘S summon the centered ceremony window.
+//  - Settings opens via our own SettingsWindowController (see AppDelegate).
+//  - `Commands` adds the standard App menu (About / Settings / Quit) so ⌘, / ⌘Q
+//    work app-wide and the app behaves correctly when activated.
 //
 
 import SwiftUI
