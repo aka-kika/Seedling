@@ -13,7 +13,7 @@ The whole app is **16 Swift files** plus an Xcode project:
 | File | Purpose |
 |---|---|
 | `App/SeedlingApp.swift` | `@main`, `Settings` scene, App menu |
-| `App/AppDelegate.swift` | `NSStatusItem` + ctrl/right-click context `NSMenu` (popUp) + global hotkey + Finder Service + Settings opening; summons the ceremony window |
+| `App/AppDelegate.swift` | `NSStatusItem` + left-click leaf `NSMenu` (popUp, with Open Seedling) + global hotkey + Finder Service + Settings opening; summons the ceremony window |
 | `App/CeremonyWindowController.swift` | Centered, borderless, key-accepting `NSPanel` (the ceremony window) that hosts `SeedCeremonyView`; fade in/out + outside-click dismissal |
 | `App/GlobalHotKey.swift` | Carbon `RegisterEventHotKey` wrapper for the ⌥⌘S summon hotkey |
 | `App/SeedHUDPanel.swift` | Transient borderless panel that plays the growth animation for headless (Finder Service) seeds |
@@ -53,31 +53,30 @@ When in doubt, **read `SeedCeremonyView.swift` first** — it's the single sourc
 ### The shape
 
 ```
-        ⌥⌘S hotkey          NSStatusItem (leaf)          Finder → Services →
-        (GlobalHotKey)            │                      "Seed this folder"
-            │            ┌────────┼────────┐                     │
-            │       left-click       ctrl+click               │
-            │                        (or right-click            │
-            ▼            │            pre-macOS 27)              ▼
-      ceremony.summon ──►│                  ▼            seedFolderFromService
-            │            ▼            ┌────────────┐      → performHeadlessSeed
-            │   ┌──────────────┐      │ NSMenu     │             │
-            │   │ CeremonyWindow│     │ .popUp()   │             ▼
-            └──►│ Controller    │     │ Settings…  │      ┌──────────────┐
-                │ (NSPanel +    │     │ Quit       │      │  SeedHUD     │
-                │ SeedCeremony) │     └────────────┘      │ (NSPanel +   │
-                └──────────────┘                          │ SeedGrowth)  │
-                         │   gear → Settings              └──────────────┘
-                         ▼   power → Quit  (window corners)
-     SeedCeremonyView  (SwiftUI view, hosted in the controller's NSPanel)
+        ⌥⌘S hotkey            NSStatusItem (leaf)         Finder → Services →
+        (GlobalHotKey)              │ click               "Seed this folder"
+            │                       ▼                            │
+            │                ┌─────────────┐                     ▼
+            │                │ NSMenu      │             seedFolderFromService
+            │                │  .popUp()   │             → performHeadlessSeed
+            │                │  • Open ────┼───┐                 │
+            │                │  • Settings…│   │                 ▼
+            │                │  • Quit     │   │          ┌──────────────┐
+            │                └─────────────┘   │          │  SeedHUD     │
+            │                                  │          │ (NSPanel +   │
+            └──────────────►  ceremony.summon()◄┘         │ SeedGrowth)  │
+                                    │                     └──────────────┘
+                                    ▼
+                          CeremonyWindowController
+                          (borderless NSPanel hosts SeedCeremonyView)
 ```
 
 There are **three ways in** — all funnel into the same seed engine + `AppSettings`:
-1. **Left-click / ⌥⌘S** → the centered ceremony window (`CeremonyWindowController` → `SeedCeremonyView`).
-2. **ctrl+click** (or right-click on macOS ≤ 26) → an `NSMenu` shown via `.popUp()` (Settings… / Quit; About now lives in a Settings tab). See §"Left-click vs. context-click" for *why* ctrl+click — macOS 27 stopped delivering right-clicks to status items.
+1. **Left-click the leaf** → an `NSMenu` shown via `.popUp()` (**Open Seedling** / Settings… / Quit; About lives in a Settings tab). **Open Seedling** is the first item and summons the ceremony. See §"The leaf menu" for *why* the menu opens on a plain left-click — macOS 27 stopped delivering right-clicks to status items.
+2. **⌥⌘S** → the centered ceremony window directly (`CeremonyWindowController` → `SeedCeremonyView`), skipping the menu.
 3. **Finder → Services → "Seed this folder"** → `seedFolderFromService` → `performHeadlessSeed`, confirmed by the `SeedHUD` panel.
 
-The ceremony window also carries its own chrome in the bottom corners: a **gear** (bottom-trailing → Settings) and a **power** glyph (bottom-leading → Quit), so both are reachable without the menu — the visible fallback on macOS 27.
+The ceremony window is deliberately **chrome-free** — just the seed and the name field. Settings and Quit live in the leaf menu (and `⌘,` / `⌘Q` work app-wide via the standard App menu), so the window carries no buttons of its own.
 
 - **`AppDelegate`** owns the `NSStatusItem`, the global hotkey (`GlobalHotKey`), the Services provider, and Settings-window opening, and holds the `CeremonyWindowController`. It's the only place (besides the controller) that touches AppKit.
 - **`CeremonyWindowController`** owns the borderless `KeyablePanel`, hosts `SeedCeremonyView`, and handles fade in/out + outside-click dismissal.
@@ -113,7 +112,7 @@ The old `.seedlingDidSeed` notification (which closed the popover) is gone — t
 
 ## 3. The ceremony flow
 
-The **v3.0 Zen ceremony** replaced the menu-bar popover. The leaf left-click and ⌥⌘S both call `CeremonyWindowController.summon()`, which fades a **centered, borderless, key-accepting `NSPanel`** in on the active screen and hosts `SeedCeremonyView`. The window dismisses on outside click, on Esc, or on its own after the ceremony completes.
+The **v3.0 Zen ceremony** replaced the menu-bar popover. The leaf menu's **Open Seedling** item and the ⌥⌘S hotkey both call `CeremonyWindowController.summon()`, which fades a **centered, borderless, key-accepting `NSPanel`** in on the active screen and hosts `SeedCeremonyView`. The window dismisses on outside click, on Esc, or on its own after the ceremony completes.
 
 `SeedCeremonyView` is a state machine over `enum Phase { onboarding, rest, growing, alive, failed }`:
 
@@ -221,49 +220,39 @@ private func updateStatusItemIcon() {
 
 `leaf` is the default state. `leaf.fill` signals "you've configured a custom templates folder." This is wired to a Combine subscription on `settings.$templatesFolderURL`, so the icon updates live when the user changes templates in Settings.
 
-### Left-click vs. context-click
+### The leaf menu (any click)
 
 ```swift
 button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
 @objc private func handleButtonPress(_ sender: NSStatusBarButton) {
-    let event = NSApp.currentEvent
-    // ctrl+click counts as a context click. On macOS 27 the system stops
-    // delivering right-mouse events to status item buttons entirely (the
-    // click dies in MenuBarAgent), so ctrl+click — which arrives as a
-    // left-click with the .control flag — is the only context gesture left.
-    let isContextClick = event?.type == .rightMouseUp
-        || event?.modifierFlags.contains(.control) == true
-    if isContextClick {
-        showContextMenu(from: sender)
-    } else {
-        ceremony.toggle()   // summon / dismiss the centered ceremony window
-    }
+    // Any click pops the leaf menu — macOS 27 stopped delivering right-mouse
+    // events to status items, so there's nothing to disambiguate. The menu
+    // carries "Open Seedling" as its first item.
+    showLeafMenu(from: sender)
 }
 ```
 
-Disambiguating left/context on one `NSStatusBarButton` is the canonical pattern — don't try to attach two separate actions to one button; that doesn't work for `NSStatusItem`. The `.control` branch is **load-bearing on macOS 27**: without it there is no way to open the menu from the leaf at all (right-click is swallowed before the app sees it — verified with instrumented probe apps).
+This is the standard menu-bar pattern: a single click opens the menu, and the primary action (**Open Seedling** → `ceremony.summon()`) is its first item. We no longer branch on the gesture — the old left-vs-ctrl split existed only because the menu used to hide behind a context-click, and macOS 27 killed that gesture (right-click is swallowed before the app sees it — verified with instrumented probe apps). `sendAction(on:)` still lists `.rightMouseUp` so that if a future macOS restores right-click delivery, it simply opens the same menu.
 
 ### Showing the menu: `popUp`, not the `performClick` dance
 
 ```swift
-private func showContextMenu(from button: NSStatusBarButton) {
+private func showLeafMenu(from button: NSStatusBarButton) {
     let menu = NSMenu()
-    // … Settings… / separator / Quit …
+    // Open Seedling (first item) / separator / Settings… / separator / Quit.
+    // Open's ⌥⌘S key-equivalent is shown only when the hotkey is enabled.
+    button.highlight(true)   // light the leaf while the menu tracks
     menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 6), in: button)
+    button.highlight(false)  // popUp is modal, so this runs once it dismisses
 }
 ```
 
-The **old** trick (assign `statusItem.menu`, `performClick(nil)`, then clear it) silently shows *nothing* on macOS 27. The reliable replacement is `NSMenu.popUp(...)` anchored to the button, called straight from the action handler. Don't reintroduce the `statusItem.menu` + `performClick` dance — it's dead on the current OS.
+The **old** trick (assign `statusItem.menu`, `performClick(nil)`, then clear it) silently shows *nothing* on macOS 27. The reliable replacement is `NSMenu.popUp(...)` anchored to the button, called straight from the action handler. Don't reintroduce the `statusItem.menu` + `performClick` dance — it's dead on the current OS. The `button.highlight(true/false)` around `popUp` gives the native pressed-state look, since we're driving the menu ourselves instead of letting the system manage `statusItem.menu`.
 
-### The visible fallback (ceremony window corners)
+### No window chrome (history)
 
-Because the leaf menu is reachable only via ctrl+click on macOS 27, the ceremony window carries Settings and Quit as always-visible corner buttons, wired in `SeedCeremonyView`:
-
-- **bottom-trailing `gearshape`** → `onSettings` (the `AppDelegate` closure that opens the Settings window); also bound to `⌘,`.
-- **bottom-leading `power`** → `NSApp.terminate(nil)`; also bound to `⌘Q`.
-
-They're set in opposite corners on purpose — the power glyph is kept away from the centered name field so it can't be hit mid-naming. Quit also lives in **Settings → About** for good measure.
+3.0.1/3.0.2 carried Settings + Quit as always-visible **gear** and **power** glyphs in the ceremony window's corners, because the leaf menu was only reachable by ctrl+click. **3.1.0 removed both** — now that a plain left-click opens the menu, those workarounds are gone and the ceremony window is just a seed and a name field again. Settings and Quit live in the leaf menu; `⌘,` and `⌘Q` still work app-wide through the standard App menu (`SeedlingApp`'s `.commands`), and Quit also remains in **Settings → About**. Don't reintroduce in-window gear/power buttons unless the leaf menu breaks again.
 
 ### Ceremony window dismissal (global event monitor)
 
@@ -308,7 +297,7 @@ CommandGroup(replacing: .appSettings) {
 }
 ```
 
-The real window is a **self-managed `NSWindow`** owned by `SettingsWindowController` (titled + closable, hosting `SettingsView`). `AppDelegate.openSettings()` flips to `.regular`, activates, and calls `settingsWindow.show()`; `handleWindowClose(_:)` drops back to `.accessory` when the last titled window closes (so the Dock icon only appears while Settings/About is open). Entry points: the ceremony window's **gear** (most discoverable), the **ctrl+click** leaf menu, and `⌘,` once any app window is key. Don't "simplify" this back to `Settings { SettingsView() }` + `showSettingsWindow:` — it won't open.
+The real window is a **self-managed `NSWindow`** owned by `SettingsWindowController` (titled + closable, hosting `SettingsView`). `AppDelegate.openSettings()` flips to `.regular`, activates, and calls `settingsWindow.show()`; `handleWindowClose(_:)` drops back to `.accessory` when the last titled window closes (so the Dock icon only appears while Settings/About is open). Entry points: the leaf menu's **Settings…** item, and `⌘,` once any app window is key (via the standard App menu). Don't "simplify" this back to `Settings { SettingsView() }` + `showSettingsWindow:` — it won't open.
 
 `SettingsView` is a segmented-tab layout — a `Picker(.segmented)` switching **Gardening / Keyboard / About**. *Gardening* holds the Root (seed library) and Garden (projects home) hero cards plus the theme picker; *Keyboard* lists the shortcuts and the ⌥⌘S summon toggle; *About* shows the icon, the **live** version string (read from `CFBundleShortVersionString` / `CFBundleVersion`, not hardcoded), and the **Quit Seedling** button. Both folder pickers go through a local `chooseDirectory()` that activates the app first.
 
@@ -393,13 +382,13 @@ Should be empty.
 3. Add a `var field: String` to `ProjectOptions` in `Models/SeedFile.swift` and pass it through `ProjectSeeder.seed(...)`.
 4. Note: the ceremony is deliberately **name-only** (zen). Surfacing a new input in `SeedCeremonyView` fights that design — prefer deriving the value (like `{{PROJECT_NAME}}` from the typed name) over adding a field.
 
-### "Add a new menu-bar context-menu item"
+### "Add a new leaf-menu item"
 
 1. Open `App/AppDelegate.swift`.
-2. Find `showContextMenu(from:)`.
+2. Find `showLeafMenu(from:)`.
 3. Add a new `NSMenuItem(...)` with an action selector (set its `.target`).
 4. Add a `@objc func` that handles the action.
-5. Remember the menu only opens on **ctrl+click** on macOS 27 — if the item is important, consider also surfacing it in the ceremony window (like the gear/power) or in Settings.
+5. The menu opens on a plain left-click, so anything you add is one click away. Keep it short — Open Seedling / Settings… / Quit is the whole menu by design; for anything richer, prefer a Settings tab.
 
 ### "Add a new Settings section"
 
@@ -460,7 +449,7 @@ Seedling was audited against the Apple HIG for macOS (loaded from `~/Documents/O
 - **Settings via `Settings { }` scene** — not a sheet, not a custom window. Standard `Form { }` inside.
 - **Settings `.windowResizability(.contentSize)`** — settings windows shouldn't be user-resizable.
 - **Floating surfaces use Liquid Glass** — the popover and HUD use `.glassEffect(...)` (macOS 26).
-- **Keyboard** — `⌘O` (pick folder), `⌘↩` (seed), `Esc` (close the ceremony via `.onExitCommand`), `⌘,` (settings — the ceremony gear's shortcut), `⌘Q` (quit — the ceremony power glyph's shortcut).
+- **Keyboard** — `⌘O` (pick folder), `⌘↩` (seed), `Esc` (close the ceremony via `.onExitCommand`), `⌘,` (Settings — from the standard App menu, mirrored in the leaf menu), `⌘Q` (Quit — from the standard App menu, mirrored in the leaf menu).
 - **Accessibility** — every icon-only button has `.accessibilityLabel` and `.accessibilityInputLabels([...])`. Section headers are `.accessibilityAddTraits(.isHeader)` for the VoiceOver rotor. `AccessibilityNotification.Announcement` posts the result of every Seed.
 - **SF Symbols** — `.imageScale(.medium)` instead of hardcoded `.font(.system(size:))` for icons. `.symbolRenderingMode(.hierarchical)` for the leaf icon and folder icons in Settings.
 
@@ -490,8 +479,8 @@ If you ever change one of these, re-read the relevant HIG reference (`accessibil
 
 ## 14. Things that actually are fragile
 
-- **The context `NSMenu` rebuild.** The `NSMenu` is created fresh on every context-click and shown via `popUp` (see §"Showing the menu"). If you add stateful menu items (e.g. a checkmark that persists), track the state elsewhere and rebuild on open — don't mutate the existing menu in place.
-- **macOS 27 swallows status-item right-clicks.** Verified OS behavior on the 27 beta: right-mouse events never reach the status button (they die in `MenuBarAgent`), and `button.menu` never fires either. The whole context path therefore hangs on the `.control`-modifier branch + `popUp`. If a future macOS restores right-click delivery, the existing `.rightMouseUp` branch already handles it — leave both.
+- **The leaf `NSMenu` rebuild.** The `NSMenu` is created fresh on every click and shown via `popUp` (see §"Showing the menu"). If you add stateful menu items (e.g. a checkmark that persists), track the state elsewhere and rebuild on open — don't mutate the existing menu in place.
+- **macOS 27 swallows status-item right-clicks.** Verified OS behavior on the 27 beta: right-mouse events never reach the status button (they die in `MenuBarAgent`), and `button.menu` never fires either. That's *why* the leaf menu opens on a plain left-click via `popUp` rather than hiding behind a context-click. `sendAction(on:)` still lists `.rightMouseUp`, so if a future macOS restores right-click delivery it just opens the same menu — leave both.
 - **Status item button's accessibility description.** Currently set to `"Seedling"` via `NSImage(systemSymbolName:accessibilityDescription:)`. If you change the icon symbol, the description doesn't auto-update. Keep them in sync.
 - **The global event monitor is never removed on `applicationWillTerminate`.** It's removed in `deinit`. If the app is force-killed, the monitor is leaked briefly. macOS cleans it up. Don't worry about it.
 
