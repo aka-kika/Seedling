@@ -19,7 +19,7 @@ set -euo pipefail
 
 TEAM_ID="P5RB3W3D58"
 # Pinned by SHA-1 (2026-09-18): two certificates share this name in the Keychain.
-IDENTITY="${SEEDLING_SIGN_IDENTITY:-D833417579CBB62121FD344B1513AE5D44A36762}"  # Developer ID Application: Veronica Loren (P5RB3W3D58)
+IDENTITY="${SEEDLING_SIGN_IDENTITY:-7E3E9BC6656A41A13F77F5C05E1663E77419388E}"  # Developer ID Application: Veronica Loren (P5RB3W3D58)
 NOTARY_PROFILE="${NOTARY_PROFILE:-seedling-notary}"
 SCHEME="Seedling"
 PROJECT="Seedling.xcodeproj"
