@@ -17,6 +17,8 @@
 
 <br><br>
 
+<img src="docs/screenshots/seedling-main.png" width="388" alt="Seedling window: moonlight-notes is alive, 6 seeds planted"/>
+
 <img src="docs/seedling-demo.gif" width="620" alt="Name a project, watch a line-art seedling grow, and enter the garden"/>
 
 </div>
